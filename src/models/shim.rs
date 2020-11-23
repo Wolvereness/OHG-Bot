@@ -1,5 +1,5 @@
 use serenity::model::id::*;
-use serde::{Deserializer, Serializer};
+use serde::{Deserializer, Serializer, Serialize};
 use serde::ser::SerializeTuple;
 use byteorder::ByteOrder;
 use byteorder::BE;
@@ -15,7 +15,7 @@ impl Optional {
         S: Serializer,
         T: Copy + Into<Optional>,
     {
-        match value.into() {
+        match (*value).into() {
             Optional(None) => serializer.serialize_none(),
             Optional(Some(value)) => serializer.serialize_some(&Required(value)),
         }
@@ -27,7 +27,7 @@ impl Optional {
         T: From<Optional>,
     {
         struct Visitable;
-        impl Visitor<'de> for Visitable {
+        impl<'de> Visitor<'de> for Visitable {
             type Value = Option<Required>;
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -56,6 +56,14 @@ impl Optional {
 #[derive(Copy, Clone)]
 pub struct Required(u64);
 
+impl Serialize for Required {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+        where S: Serializer
+    {
+        Required::serialize(self, serializer)
+    }
+}
+
 impl Required {
     pub fn serialize<S, T>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -63,7 +71,7 @@ impl Required {
             T: Copy + Into<Required>,
     {
         let mut bytes = &mut [0u8;8];
-        BE::write_u64(bytes, value.into().0);
+        BE::write_u64(bytes, (*value).into().0);
         let (high, low) = bytes.split_at(4);
         let mut serializer = serializer.serialize_tuple(2)?;
         serializer.serialize_element(&BE::read_u32(high))?;
@@ -77,7 +85,7 @@ impl Required {
             T: From<Required>,
     {
         struct Visitable;
-        impl Visitor for Visitable {
+        impl<'de> Visitor<'de> for Visitable {
             type Value = (u32, u32);
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -114,27 +122,27 @@ impl Required {
 
 macro_rules! implement {
     ($t:ty) => {
-        impl Into<$t> for Required {
-            fn into(self) -> $t {
-                $t(self.0)
+        impl From<$t> for Required {
+            fn from(value: $t) -> Self {
+                Required(value.0)
             }
         }
 
-        impl Into<Required> for $t {
-            fn into(self) -> Required {
-                Required(self.0)
+        impl From<Required> for $t {
+            fn from(value: Required) -> Self {
+                <$t>::from(value.0)
             }
         }
 
-        impl Into<Option<$t>> for Optional {
-            fn into(self) -> $t {
-                self.0.map($t)
+        impl From<std::option::Option<$t>> for Optional {
+            fn from(value: std::option::Option<$t>) -> Self {
+                Optional(value.map(|value: $t| value.0))
             }
         }
 
-        impl Into<Optional> for Option<$t> {
-            fn into(self) -> Optional {
-                Optional(self.map(|value| value.0))
+        impl From<Optional> for std::option::Option<$t> {
+            fn from(value: Optional) -> Self {
+                value.0.map(<$t>::from)
             }
         }
     };
