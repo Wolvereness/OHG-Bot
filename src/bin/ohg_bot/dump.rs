@@ -9,10 +9,18 @@ pub async fn main() {
         .await
         .expect("Failed to connect")
         .database("ohg");
-    dump(RoleAssociation::find(&db, None, None).await.expect("Failed to search RoleAssociation"))
+    dump(
+        RoleAssociation::find(&db, None, None)
+            .await
+            .expect("Failed to search RoleAssociation")
+    )
         .await
         .expect("Failed to dump RoleAssociation");
-    dump(RoleStatus::find(&db, None, None).await.expect("Failed to search RoleStatus"))
+    dump(
+        RoleStatus::find(&db, None, None)
+            .await
+            .expect("Failed to search RoleStatus")
+    )
         .await
         .expect("Failed to dump RoleStatus");
 }
