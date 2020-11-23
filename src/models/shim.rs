@@ -70,7 +70,7 @@ impl Required {
             S: Serializer,
             T: Copy + Into<Required>,
     {
-        let mut bytes = &mut [0u8;8];
+        let bytes = &mut [0u8;8];
         BE::write_u64(bytes, (*value).into().0);
         let (high, low) = bytes.split_at(4);
         let mut serializer = serializer.serialize_tuple(2)?;
@@ -112,7 +112,7 @@ impl Required {
         }
 
         let (high, low) = deserializer.deserialize_tuple(2, Visitable)?;
-        let mut bytes = &mut [0u8;8];
+        let bytes = &mut [0u8;8];
         let (high_bytes, low_bytes) = bytes.split_at_mut(4);
         BE::write_u32(high_bytes, high);
         BE::write_u32(low_bytes, low);
