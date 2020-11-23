@@ -74,8 +74,8 @@ impl Required {
         BE::write_u64(bytes, (*value).into().0);
         let (high, low) = bytes.split_at(4);
         let mut serializer = serializer.serialize_tuple(2)?;
-        serializer.serialize_element(&BE::read_u32(high))?;
-        serializer.serialize_element(&BE::read_u32(low))?;
+        serializer.serialize_element(&BE::read_i32(high))?;
+        serializer.serialize_element(&BE::read_i32(low))?;
         serializer.end()
     }
 
@@ -86,7 +86,7 @@ impl Required {
     {
         struct Visitable;
         impl<'de> Visitor<'de> for Visitable {
-            type Value = (u32, u32);
+            type Value = (i32, i32);
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 write!(formatter, "Expected (u32,u32)")
@@ -114,8 +114,8 @@ impl Required {
         let (high, low) = deserializer.deserialize_tuple(2, Visitable)?;
         let bytes = &mut [0u8;8];
         let (high_bytes, low_bytes) = bytes.split_at_mut(4);
-        BE::write_u32(high_bytes, high);
-        BE::write_u32(low_bytes, low);
+        BE::write_i32(high_bytes, high);
+        BE::write_i32(low_bytes, low);
         Ok(T::from(Required(BE::read_u64(bytes))))
     }
 }

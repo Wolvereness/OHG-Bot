@@ -7,7 +7,8 @@ pub async fn main() {
     let db_url = read_to_string("./db-url.txt").expect("Failed to read db-url.txt");
     let db = wither::mongodb::Client::with_uri_str(&db_url)
         .await
-        .expect("Failed to connect").database("ohg");
+        .expect("Failed to connect")
+        .database("ohg");
 
     if !models::DiscordCredentials::find_one(&db, None, None).await.expect("Failed to search discord credentials").is_some() {
         models::DiscordCredentials {
