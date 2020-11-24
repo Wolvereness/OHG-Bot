@@ -10,6 +10,8 @@ use wither::bson::oid::ObjectId;
 use serenity::prelude::*;
 use wither::mongodb::Database;
 
+pub use shim::Required as Shim;
+
 pub struct DatabaseHandle;
 
 impl TypeMapKey for DatabaseHandle {
