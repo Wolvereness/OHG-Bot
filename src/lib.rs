@@ -12,6 +12,7 @@ use wither::prelude::*;
 
 pub mod models;
 mod commands;
+mod util;
 
 use models::DiscordCredentials;
 use crate::models::DatabaseHandle;
