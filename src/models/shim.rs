@@ -4,6 +4,7 @@ use byteorder::ByteOrder;
 use byteorder::BE;
 use serde::de::{Visitor, Error};
 use serenity::static_assertions::_core::fmt::Formatter;
+use wither::bson::{Bson, Array};
 
 pub struct Optional;
 impl Optional {
@@ -98,6 +99,15 @@ impl From<Required> for u64 {
         BE::write_i32(high_bytes, high);
         BE::write_i32(low_bytes, low);
         BE::read_u64(bytes)
+    }
+}
+
+impl From<Required> for Bson {
+    fn from(value: Required) -> Self {
+        Bson::Array(Array::from(&[
+            Bson::Int32(value.0),
+            Bson::Int32(value.1),
+        ] as &[Bson]))
     }
 }
 

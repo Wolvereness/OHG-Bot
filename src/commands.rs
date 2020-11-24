@@ -17,10 +17,19 @@ use futures::{
 };
 use wither::bson::doc;
 use wither::prelude::*;
-use crate::models::{DatabaseHandle, RoleAssociation};
+use crate::{
+    models::{
+        DatabaseHandle,
+        RoleAssociation,
+        Shim,
+    },
+    util::Mentionable,
+};
+use std::fmt::Write as _;
+use wither::mongodb::Database;
 
 #[group]
-#[commands(ping, join, register_role)]
+#[commands(ping, join, register_role, parrot)]
 pub struct General;
 
 pub struct Handler;
@@ -37,40 +46,60 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if msg.guild_id.is_none() {
+        return Ok(());
+    }
+    let mut description = String::new();
+    let mut ix = 0;
+    while !args.is_empty() {
+        ix += 1;
+        writeln!(&mut description, "{}: {:?}", ix, args.current().unwrap())?;
+        args.advance();
+    }
+    let ix: usize = ix;
+
+    msg.channel_id.send_message(ctx, |message| message
+        .embed(|e| e
+            .title("I'm a parrot!")
+            .description(description)
+            .footer(|f| f
+                .text(format!("FIN! {}", ix))
+            )
+        )
+    ).await?;
+
+    Ok(())
+}
+
+#[command]
+#[only_in("guild")]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if args.len() > 1 {
         msg.reply(ctx, "No spaces in the name of the group to join").await?;
         return Ok(());
     }
-    let Context {
-        cache,
-        http,
-        data,
-        ..
-    } = ctx;
-    let guild = msg.guild(cache);
-    let channel = msg.channel(cache);
-    let (guild, channel): (Guild, GuildChannel) = match join!(guild, channel) {
-        (Some(guild), Some(Channel::Guild(channel))) => (guild, channel),
-        _ => {
-            msg.reply(http, "Sorry, I'm not smart enough to figure out which server you're asking about. Try sending the message in the server.").await?;
-            return Ok(());
-        },
-    };
-    let typing = channel.broadcast_typing(http);
-    let db = data.read();
-    let (typing, db) = join!(typing, db);
-    typing?;
-    let db = db
-        .get::<DatabaseHandle>()
-        .ok_or("Database not present")?;
+
+    let guild = msg.guild(ctx);
+    let typing = msg.channel_id.broadcast_typing(ctx);
+    let db = ctx.data.read();
+    let (guild, typing, db) = join!(guild, typing, db);
+    let (guild, _, db): (Guild, _, &Database) = (
+        guild.ok_or("No guild?!")?,
+        typing?,
+        db
+            .get::<DatabaseHandle>()
+            .ok_or("Database not present")?,
+    );
 
     if args.is_empty() {
         let associations: std::result::Result<Vec<RoleAssociation>, _> = RoleAssociation::find(
             db,
             Some(doc!{
-                "channel": doc!{ "$eq": &format!("{}", channel.id) },
-                "server": doc!{ "$eq": &format!("{}", guild.id) },
+                "$or": [
+                    { "channel": doc!{ "$eq": &Shim::from(msg.channel_id) } },
+                    { "server": doc!{ "$eq": &Shim::from(guild.id) } },
+                ],
             }),
             None,
         )
@@ -78,16 +107,62 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             .try_collect()
             .await;
         let associations = associations?;
-    }
 
-    msg.reply(ctx, "Pong!").await?;
+        let mut description = "```\n".to_string();
+        for (ix, association) in associations.iter().enumerate() {
+            writeln!(&mut description, "{}: {:?}", ix, association)?;
+        }
+        description.push_str("```\n\n");
+        for (ix, association) in associations.iter().enumerate() {
+            match association {
+                &RoleAssociation {
+                    channel: Some(channel),
+                    server: None,
+                    role,
+                    ..
+                } => writeln!(
+                    &mut description,
+                    "{}: {} in {}",
+                    ix,
+                    Mentionable::from(role),
+                    Mentionable::from(channel),
+                )?,
+                &RoleAssociation {
+                    channel: None,
+                    server: Some(server),
+                    role,
+                    ..
+                } => writeln!(
+                    &mut description,
+                    "{}: {} in {:?}",
+                    ix,
+                    Mentionable::from(role),
+                    server,
+                )?,
+                _ => writeln!(
+                    &mut description,
+                    "{} ERR: {:?}",
+                    ix,
+                    association,
+                )?,
+            }
+        }
+
+        msg.channel_id.send_message(ctx, |message| {
+            message.embed(|mut e| e
+                .title("Association Dump:")
+                .description(description)
+            )
+        }).await?;
+    }
 
     Ok(())
 }
 
 #[command]
-async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let db = ctx.data
+#[only_in("guild")]
+async fn leave(ctx: &Context, _msg: &Message, _args: Args) -> CommandResult {
+    let _db = ctx.data
         .read()
         .await
         .get::<DatabaseHandle>()
@@ -98,9 +173,10 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 
 #[command]
+#[only_in("guild")]
 #[required_permissions("ADMINISTRATOR")]
-async fn register_role(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let db = ctx.data
+async fn register_role(ctx: &Context, _msg: &Message, _args: Args) -> CommandResult {
+    let _db = ctx.data
         .read()
         .await
         .get::<DatabaseHandle>()
