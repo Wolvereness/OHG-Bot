@@ -1,9 +1,8 @@
 use serenity::model::id::*;
 use serde::{Deserializer, Serializer, Serialize, Deserialize};
-use serde::ser::SerializeTuple;
 use byteorder::ByteOrder;
 use byteorder::BE;
-use serde::de::{Visitor, SeqAccess, Error};
+use serde::de::{Visitor, Error};
 use serenity::static_assertions::_core::fmt::Formatter;
 
 pub struct Optional;
