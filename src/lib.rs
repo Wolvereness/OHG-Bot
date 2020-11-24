@@ -15,13 +15,22 @@ mod commands;
 
 use models::DiscordCredentials;
 use crate::models::DatabaseHandle;
+use wither::mongodb::Database;
 
-pub async fn main() {
-    let db_url = read_to_string("./db-url.txt").expect("Failed to read db-url.txt");
-    let db = wither::mongodb::Client::with_uri_str(&db_url)
+pub const DATABASE_NAME: &'static str = "ohg";
+
+pub async fn connect_db() -> Database {
+    wither::mongodb::Client::with_uri_str(
+        &read_to_string("./db-url.txt")
+            .expect("Failed to read db-url.txt")
+    )
         .await
         .expect("Failed to connect")
-        .database("ohg");
+        .database(DATABASE_NAME)
+}
+
+pub async fn main() {
+    let db = connect_db().await;
     let creds: DiscordCredentials = DiscordCredentials::find_one(&db, None, None)
         .await
         .expect("Failed to search discord credentials")

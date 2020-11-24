@@ -1,14 +1,10 @@
-use std::fs::read_to_string;
 use ohg_bot_lib::models::{RoleAssociation, RoleStatus};
 use wither::{Model, ModelCursor};
 use futures::StreamExt;
+use ohg_bot_lib::connect_db;
 
 pub async fn main() {
-    let db_url = read_to_string("./db-url.txt").expect("Failed to read db-url.txt");
-    let db = wither::mongodb::Client::with_uri_str(&db_url)
-        .await
-        .expect("Failed to connect")
-        .database("ohg");
+    let db = connect_db().await;
     dump(
         RoleAssociation::find(&db, None, None)
             .await
