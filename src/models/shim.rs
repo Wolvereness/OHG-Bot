@@ -114,7 +114,7 @@ macro_rules! implement {
         impl From<Required> for $t {
             #[inline(always)]
             fn from(value: Required) -> Self {
-                <$t as From<u64>>::from(<Required as Into<u64>::into(value))
+                <$t as From<u64>>::from(<Required as Into<u64>>::into(value))
             }
         }
     };
