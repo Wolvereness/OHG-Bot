@@ -52,6 +52,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let reply_reference = MessageReference::from(msg);
     if msg.guild_id.is_none() {
         return Ok(());
     }
@@ -65,6 +66,7 @@ async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let ix: usize = ix;
 
     msg.channel_id.send_message(ctx, |message| message
+        .reference_message(reply_reference)
         .embed(|e| e
             .title("I'm a parrot!")
             .description(description)
@@ -80,6 +82,7 @@ async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[command]
 #[only_in("guild")]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let reply_reference = MessageReference::from(msg);
     if args.len() > 1 {
         msg.reply(ctx, "No spaces in the name of the group to join").await?;
         return Ok(());
@@ -102,9 +105,10 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         let (member, associations): (Result<Member, _>, Result<Vec<RoleAssociation>, _>) = join!(member, associations);
         let (member, associations) = (member?, &associations?);
 
-        async fn apply_role(ctx: &Context, channel: ChannelId, role: RoleId, mut member: Member, specific: bool) -> CommandResult {
+        async fn apply_role(ctx: &Context, channel: ChannelId, role: RoleId, mut member: Member, reply_reference: MessageReference, specific: bool) -> CommandResult {
             member.add_role(ctx, role).await?;
-            channel.send_message(ctx, |messages| messages
+            channel.send_message(ctx, |message| message
+                .reference_message(reply_reference)
                 .embed(|e| {
                     let e = e.title("Join command:");
                     if specific {
@@ -128,23 +132,29 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
         for association in associations {
             if association.channel.is_some() {
-                return apply_role(ctx, msg.channel_id, association.role, member, true).await;
+                return apply_role(ctx, msg.channel_id, association.role, member, reply_reference,true).await;
             }
         }
         for association in associations {
             if association.server.is_some() {
-                return apply_role(ctx, msg.channel_id, association.role, member, false).await;
+                return apply_role(ctx, msg.channel_id, association.role, member, reply_reference,false).await;
             }
         }
-        msg.channel_id.send_message(ctx, |messages| messages.embed(|e| e
-            .title("No groups found!")
-            .description(format_args!("No group configured for {}.\nNo generic group configured for the server.", Mentionable::from(msg.channel_id)))
-        )).await?;
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(reply_reference)
+            .embed(|e| e
+                .title("No groups found!")
+                .description(format_args!("No group configured for {}.\nNo generic group configured for the server.", Mentionable::from(msg.channel_id)))
+            )
+        ).await?;
     } else {
-        msg.channel_id.send_message(ctx, |messages| messages.embed(|e| e
-            .title("I can't do that yet!")
-            .description("At some future date, I'll be able to find the group you want.\n\nFor now, please try to join in the respective channel.")
-        )).await?;
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(reply_reference)
+            .embed(|e| e
+                .title("I can't do that yet!")
+                .description("At some future date, I'll be able to find the group you want.\n\nFor now, please try to join in the respective channel.")
+            )
+        ).await?;
     }
 
     Ok(())
@@ -153,6 +163,7 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command]
 #[only_in("guild")]
 async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
+    let reply_reference = MessageReference::from(msg);
     let guild = msg.guild_id.ok_or("No guild present")?;
     let typing = msg.channel_id.broadcast_typing(ctx);
     let db = ctx.data.read();
@@ -205,12 +216,13 @@ async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
         }
     }
 
-    msg.channel_id.send_message(ctx, |message| {
-        message.embed(|e| e
+    msg.channel_id.send_message(ctx, |message| message
+        .reference_message(reply_reference)
+        .embed(|e| e
             .title("Association Dump:")
             .description(description)
         )
-    }).await?;
+    ).await?;
 
     Ok(())
 }
@@ -231,6 +243,7 @@ async fn leave(ctx: &Context, _msg: &Message, _args: Args) -> CommandResult {
 #[only_in("guild")]
 #[required_permissions("ADMINISTRATOR")]
 async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let reply_reference = MessageReference::from(msg);
     let guild = msg.guild_id.ok_or("No guild present")?;
     async fn bad_message(ctx: &Context, msg: &Message) -> CommandResult {
         const CONTENT: &'static str = "One or two parameters.\nOne may be a reference to the channel.\nOne must be either a reference to the group, or the group ID.";
@@ -312,15 +325,18 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
                 association.role = role;
                 association.save(db, None).await?;
 
-                msg.channel_id.send_message(ctx, |message| message.embed(|e| e
-                    .title("Role Association:")
-                    .description(format_args!(
-                        "{} updated to {} from {}",
-                        Mentionable::from(channel),
-                        Mentionable::from(role),
-                        Mentionable::from(old),
-                    ))
-                )).await?;
+                msg.channel_id.send_message(ctx, |message| message
+                    .reference_message(reply_reference)
+                    .embed(|e| e
+                        .title("Role Association:")
+                        .description(format_args!(
+                            "{} updated to {} from {}",
+                            Mentionable::from(channel),
+                            Mentionable::from(role),
+                            Mentionable::from(old),
+                        ))
+                    )
+                ).await?;
                 return Ok(());
             }
         }
@@ -335,14 +351,17 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
             .save(db, None)
             .await?;
 
-        msg.channel_id.send_message(ctx, |message| message.embed(|e| e
-            .title("Role Association:")
-            .description(format_args!(
-                "{} is now associated to {}",
-                Mentionable::from(channel),
-                Mentionable::from(role),
-            ))
-        )).await?;
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(reply_reference)
+            .embed(|e| e
+                .title("Role Association:")
+                .description(format_args!(
+                    "{} is now associated to {}",
+                    Mentionable::from(channel),
+                    Mentionable::from(role),
+                ))
+            )
+        ).await?;
     } else {
         for mut association in associations {
             if association.server.is_some() {
@@ -350,14 +369,17 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
                 association.role = role;
                 association.save(db, None).await?;
 
-                msg.channel_id.send_message(ctx, |message| message.embed(|e| e
-                    .title("Role Association:")
-                    .description(format_args!(
-                        "Server's generic role updated to {} from {}",
-                        Mentionable::from(role),
-                        Mentionable::from(old),
-                    ))
-                )).await?;
+                msg.channel_id.send_message(ctx, |message| message
+                    .reference_message(reply_reference)
+                    .embed(|e| e
+                        .title("Role Association:")
+                        .description(format_args!(
+                            "Server's generic role updated to {} from {}",
+                            Mentionable::from(role),
+                            Mentionable::from(old),
+                        ))
+                    )
+                ).await?;
                 return Ok(());
             }
         }
@@ -372,13 +394,16 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
             .save(db, None)
             .await?;
 
-        msg.channel_id.send_message(ctx, |message| message.embed(|e| e
-            .title("Role Association:")
-            .description(format_args!(
-                "Server's generic role is now {}",
-                Mentionable::from(role),
-            ))
-        )).await?;
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(reply_reference)
+            .embed(|e| e
+                .title("Role Association:")
+                .description(format_args!(
+                    "Server's generic role is now {}",
+                    Mentionable::from(role),
+                ))
+            )
+        ).await?;
     }
 
     Ok(())
