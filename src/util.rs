@@ -1,5 +1,28 @@
 use serenity::model::prelude::*;
 use std::fmt::{Display, Formatter};
+use serenity::framework::standard::CommandResult;
+use crate::models::{RoleAssociation, Shim};
+use wither::mongodb::Database;
+use wither::bson::doc;
+use wither::Model;
+use futures::TryStreamExt;
+
+pub async fn get_role_associations(db: &Database, channel: ChannelId, guild: GuildId) -> CommandResult<Vec<RoleAssociation>> {
+    RoleAssociation::find(
+        db,
+        Some(doc!{
+                "$or": [
+                    { "channel": doc!{ "$eq": &Shim::from(channel) } },
+                    { "server": doc!{ "$eq": &Shim::from(guild) } },
+                ],
+            }),
+        None,
+    )
+        .await?
+        .try_collect()
+        .await
+        .map_err(Into::into)
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Mentionable(MentionableImpl);
