@@ -131,10 +131,10 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 
-async fn execute_contextual_role_change<'a, 'b: 'a, F1, F2, V, E>(
-    ctx: &'b Context,
-    msg: &'b Message,
-    member: &'b mut Member,
+async fn execute_contextual_role_change<'a, F1, F2, V, E>(
+    ctx: &'a Context,
+    msg: &Message,
+    member: &'a mut Member,
     associations: Vec<RoleAssociation>,
     change_roles: F1,
     embed_channel_context: impl FnOnce(&mut CreateEmbed, RoleId) -> &mut CreateEmbed,
@@ -142,11 +142,11 @@ async fn execute_contextual_role_change<'a, 'b: 'a, F1, F2, V, E>(
 ) -> CommandResult
 where
     F1: FnOnce(
-        &'b mut Member,
-        &'b Context,
+        &'a mut Member,
+        &'a Context,
         RoleId,
     ) -> F2,
-    F2: 'a + Future<Output=Result<V, E>>,
+    F2: Future<Output=Result<V, E>>,
     CommandError: From<E>,
 {
     if let Some(association) = associations
