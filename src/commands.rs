@@ -1,6 +1,7 @@
 use std::{
     result::Result,
     fmt::Write as _,
+    future::Future,
 };
 use serenity::{
     async_trait,
@@ -8,12 +9,14 @@ use serenity::{
     model::prelude::*,
     framework::standard::{
         Args,
+        CommandError,
         CommandResult,
         macros::{
             command,
             group
         },
     },
+    builder::CreateEmbed,
 };
 use futures::join;
 use wither::{
@@ -52,7 +55,6 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let reply_reference = MessageReference::from(msg);
     if msg.guild_id.is_none() {
         return Ok(());
     }
@@ -66,7 +68,7 @@ async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let ix: usize = ix;
 
     msg.channel_id.send_message(ctx, |message| message
-        .reference_message(reply_reference)
+        .reference_message(msg)
         .embed(|e| e
             .title("I'm a parrot!")
             .description(description)
@@ -82,7 +84,6 @@ async fn parrot(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 #[command]
 #[only_in("guild")]
 async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let reply_reference = MessageReference::from(msg);
     if args.len() > 1 {
         msg.reply(ctx, "No spaces in the name of the group to join").await?;
         return Ok(());
@@ -100,64 +101,76 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     );
 
     if args.is_empty() {
-        let member = guild.member(ctx, &msg.author.id);
-        let associations = get_role_associations(db, msg.channel_id, guild);
-        let (member, associations): (Result<Member, _>, Result<Vec<RoleAssociation>, _>) = join!(member, associations);
-        let (member, associations) = (member?, &associations?);
-
-        async fn apply_role(ctx: &Context, channel: ChannelId, role: RoleId, mut member: Member, reply_reference: MessageReference, specific: bool) -> CommandResult {
-            member.add_role(ctx, role).await?;
-            channel.send_message(ctx, |message| message
-                .reference_message(reply_reference)
-                .embed(|e| {
-                    let e = e.title("Join command:");
-                    if specific {
-                        e.description(format_args!(
-                            "{} has joined {} for {}.",
-                            Mentionable::from(member.user.id),
-                            Mentionable::from(role),
-                            Mentionable::from(channel),
-                        ))
-                    } else {
-                        e.description(format_args!(
-                            "{} has joined {}.",
-                            Mentionable::from(member.user.id),
-                            Mentionable::from(role),
-                        ))
-                    }
-                })
-            ).await?;
-            Ok(())
-        }
-
-        for association in associations {
-            if association.channel.is_some() {
-                return apply_role(ctx, msg.channel_id, association.role, member, reply_reference,true).await;
-            }
-        }
-        for association in associations {
-            if association.server.is_some() {
-                return apply_role(ctx, msg.channel_id, association.role, member, reply_reference,false).await;
-            }
-        }
-        msg.channel_id.send_message(ctx, |message| message
-            .reference_message(reply_reference)
-            .embed(|e| e
-                .title("No groups found!")
-                .description(format_args!("No group configured for {}.\nNo generic group configured for the server.", Mentionable::from(msg.channel_id)))
-            )
-        ).await?;
+        let (member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
+        execute_contextual_role_change(
+            ctx,
+            msg.into(),
+            member,
+            associations,
+            Member::add_role,
+            |e, role| e
+                .title("Join command:")
+                .description(format_args!(
+                    "{} has joined {} for {}.",
+                    Mentionable::from(msg.author.id),
+                    Mentionable::from(role),
+                    Mentionable::from(msg.channel_id),
+                )),
+            |e, role| e
+                .title("Join command:")
+                .description(format_args!(
+                    "{} has joined {}.",
+                    Mentionable::from(msg.author.id),
+                    Mentionable::from(role),
+                )),
+        ).await;
     } else {
-        msg.channel_id.send_message(ctx, |message| message
-            .reference_message(reply_reference)
-            .embed(|e| e
-                .title("I can't do that yet!")
-                .description("At some future date, I'll be able to find the group you want.\n\nFor now, please try to join in the respective channel.")
-            )
-        ).await?;
+        send_message_not_yet_implemented(ctx, msg).await?;
     }
 
     Ok(())
+}
+
+async fn execute_contextual_role_change<F1, F2, V, E>(
+    ctx: &Context,
+    msg: &Message,
+    mut member: Member,
+    associations: Vec<RoleAssociation>,
+    change_roles: F1,
+    embed_channel_context: impl FnOnce(&mut CreateEmbed, RoleId) -> &mut CreateEmbed,
+    embed_server_context: impl FnOnce(&mut CreateEmbed, RoleId) -> &mut CreateEmbed,
+) -> CommandResult
+where
+    for<'a> F1: FnOnce(
+        &'a mut Member,
+        &Context,
+        RoleId,
+    ) -> F2,
+    F2: Future<Output=Result<V, E>>,
+    CommandError: From<E>,
+{
+    if let Some(association) = associations
+        .iter()
+        .find(|association| association.channel.is_some())
+    {
+        change_roles(&mut member, ctx, association.role).await?;
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(msg)
+            .embed(|e| embed_channel_context(e, association.role))
+        ).await?;
+    } else if let Some(association) = associations
+        .iter()
+        .find(|association| association.server.is_some())
+    {
+        change_roles(&mut member, ctx, association.role).await?;
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(msg)
+            .embed(|e| embed_server_context(e, association.role))
+        ).await?;
+    } else {
+        send_message_no_group_found(ctx, msg).await?;
+    }
+    return Ok(())
 }
 
 #[command]
@@ -217,7 +230,7 @@ async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
     }
 
     msg.channel_id.send_message(ctx, |message| message
-        .reference_message(reply_reference)
+        .reference_message(msg)
         .embed(|e| e
             .title("Association Dump:")
             .description(description)
@@ -229,13 +242,80 @@ async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[only_in("guild")]
-async fn leave(ctx: &Context, _msg: &Message, _args: Args) -> CommandResult {
-    let _db = ctx.data
-        .read()
-        .await
-        .get::<DatabaseHandle>()
-        .ok_or("Database not present")?;
+async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.len() > 1 {
+        msg.reply(ctx, "No spaces in the name of the group to join").await?;
+        return Ok(());
+    }
 
+    let guild = msg.guild_id.ok_or("No guild?")?;
+    let typing = msg.channel_id.broadcast_typing(ctx);
+    let db = ctx.data.read();
+    let (typing, db) = join!(typing, db);
+    let (_, db): (_, &Database) = (
+        typing?,
+        db
+            .get::<DatabaseHandle>()
+            .ok_or("Database not present")?,
+    );
+
+    if args.is_empty() {
+        let (member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
+        execute_contextual_role_change(
+            ctx,
+            msg.into(),
+            member,
+            associations,
+            Member::remove_role,
+            |e, role| e
+                .title("Leave command:")
+                .description(format_args!(
+                    "{} has left {} for {}.",
+                    Mentionable::from(msg.author.id),
+                    Mentionable::from(role),
+                    Mentionable::from(msg.channel_id),
+                )),
+            |e, role| e
+                .title("Leave command:")
+                .description(format_args!(
+                    "{} has left {}.",
+                    Mentionable::from(msg.author.id),
+                    Mentionable::from(role),
+                )),
+        ).await;
+    } else {
+        send_message_not_yet_implemented(ctx, msg).await;
+    }
+
+    Ok(())
+}
+
+async fn load_member_and_associations(ctx: &Context, msg: &Message, guild: GuildId, db: &Database) -> CommandResult<(Member, Vec<RoleAssociation>)> {
+    let member = guild.member(ctx, &msg.author.id);
+    let associations = get_role_associations(db, msg.channel_id, guild);
+    let (member, associations): (Result<Member, _>, Result<Vec<RoleAssociation>, _>) = join!(member, associations);
+    Ok((member?, associations?))
+}
+
+async fn send_message_not_yet_implemented(ctx: &Context, msg: &Message) -> CommandResult {
+    msg.channel_id.send_message(ctx, |message| message
+        .reference_message(msg)
+        .embed(|e| e
+            .title("I can't do that yet!")
+            .description("At some future date, I'll be able to find the group you want.\n\nFor now, please try to join/leave in the respective channel.")
+        )
+    ).await?;
+    Ok(())
+}
+
+async fn send_message_no_group_found(ctx: &Context, msg: &Message) -> CommandResult {
+    msg.channel_id.send_message(ctx, |message| message
+        .reference_message(msg)
+        .embed(|e| e
+            .title("No groups found!")
+            .description(format_args!("No group configured for {}.\nNo generic group configured for the server.", Mentionable::from(msg.channel_id)))
+        )
+    ).await?;
     Ok(())
 }
 
@@ -243,7 +323,6 @@ async fn leave(ctx: &Context, _msg: &Message, _args: Args) -> CommandResult {
 #[only_in("guild")]
 #[required_permissions("ADMINISTRATOR")]
 async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let reply_reference = MessageReference::from(msg);
     let guild = msg.guild_id.ok_or("No guild present")?;
     async fn bad_message(ctx: &Context, msg: &Message) -> CommandResult {
         const CONTENT: &'static str = "One or two parameters.\nOne may be a reference to the channel.\nOne must be either a reference to the group, or the group ID.";
@@ -259,9 +338,11 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
     let mut role: Option<RoleId> = None;
     while !args.is_empty() {
         match (args.parse(), args.parse()) {
+            // This arm triggers when the channel itself is highlighted
             (Ok(parsed), Err(_))
                 if channel.is_none() =>
                     channel = Some(parsed),
+            // This triggers on highlight or number
             (_, Ok(parsed))
                 if role.is_none() =>
                     role = Some(parsed),
@@ -326,7 +407,7 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
                 association.save(db, None).await?;
 
                 msg.channel_id.send_message(ctx, |message| message
-                    .reference_message(reply_reference)
+                    .reference_message(msg)
                     .embed(|e| e
                         .title("Role Association:")
                         .description(format_args!(
@@ -352,7 +433,7 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
             .await?;
 
         msg.channel_id.send_message(ctx, |message| message
-            .reference_message(reply_reference)
+            .reference_message(msg)
             .embed(|e| e
                 .title("Role Association:")
                 .description(format_args!(
@@ -370,7 +451,7 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
                 association.save(db, None).await?;
 
                 msg.channel_id.send_message(ctx, |message| message
-                    .reference_message(reply_reference)
+                    .reference_message(msg)
                     .embed(|e| e
                         .title("Role Association:")
                         .description(format_args!(
@@ -395,7 +476,7 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
             .await?;
 
         msg.channel_id.send_message(ctx, |message| message
-            .reference_message(reply_reference)
+            .reference_message(msg)
             .embed(|e| e
                 .title("Role Association:")
                 .description(format_args!(
