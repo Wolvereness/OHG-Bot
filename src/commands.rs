@@ -123,7 +123,7 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                     Mentionable::from(msg.author.id),
                     Mentionable::from(role),
                 )),
-        ).await;
+        ).await?;
     } else {
         send_message_not_yet_implemented(ctx, msg).await?;
     }
@@ -176,7 +176,6 @@ where
 #[command]
 #[only_in("guild")]
 async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
-    let reply_reference = MessageReference::from(msg);
     let guild = msg.guild_id.ok_or("No guild present")?;
     let typing = msg.channel_id.broadcast_typing(ctx);
     let db = ctx.data.read();
@@ -282,9 +281,9 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                     Mentionable::from(msg.author.id),
                     Mentionable::from(role),
                 )),
-        ).await;
+        ).await?;
     } else {
-        send_message_not_yet_implemented(ctx, msg).await;
+        send_message_not_yet_implemented(ctx, msg).await?;
     }
 
     Ok(())
