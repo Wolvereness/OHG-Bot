@@ -37,7 +37,7 @@ use crate::{
 };
 
 #[group]
-#[commands(ping, join, register_role, parrot, dump_associations)]
+#[commands(ping, join, leave, register_role, parrot, dump_associations)]
 pub struct General;
 
 pub struct Handler;
