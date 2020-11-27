@@ -101,11 +101,11 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     );
 
     if args.is_empty() {
-        let (member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
+        let (mut member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
         execute_contextual_role_change(
             ctx,
             msg.into(),
-            member,
+            &mut member,
             associations,
             Member::add_role,
             |e, role| e
@@ -131,29 +131,29 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 
-async fn execute_contextual_role_change<F1, F2, V, E>(
-    ctx: &Context,
-    msg: &Message,
-    mut member: Member,
+async fn execute_contextual_role_change<'a, 'b: 'a, F1, F2, V, E>(
+    ctx: &'b Context,
+    msg: &'b Message,
+    member: &'b mut Member,
     associations: Vec<RoleAssociation>,
     change_roles: F1,
     embed_channel_context: impl FnOnce(&mut CreateEmbed, RoleId) -> &mut CreateEmbed,
     embed_server_context: impl FnOnce(&mut CreateEmbed, RoleId) -> &mut CreateEmbed,
 ) -> CommandResult
 where
-    for<'a> F1: FnOnce(
-        &'a mut Member,
-        &Context,
+    F1: FnOnce(
+        &'b mut Member,
+        &'b Context,
         RoleId,
     ) -> F2,
-    F2: Future<Output=Result<V, E>>,
+    F2: 'a + Future<Output=Result<V, E>>,
     CommandError: From<E>,
 {
     if let Some(association) = associations
         .iter()
         .find(|association| association.channel.is_some())
     {
-        change_roles(&mut member, ctx, association.role).await?;
+        change_roles(member, ctx, association.role).await?;
         msg.channel_id.send_message(ctx, |message| message
             .reference_message(msg)
             .embed(|e| embed_channel_context(e, association.role))
@@ -162,7 +162,7 @@ where
         .iter()
         .find(|association| association.server.is_some())
     {
-        change_roles(&mut member, ctx, association.role).await?;
+        change_roles(member, ctx, association.role).await?;
         msg.channel_id.send_message(ctx, |message| message
             .reference_message(msg)
             .embed(|e| embed_server_context(e, association.role))
@@ -260,11 +260,11 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     );
 
     if args.is_empty() {
-        let (member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
+        let (mut member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
         execute_contextual_role_change(
             ctx,
             msg.into(),
-            member,
+            &mut member,
             associations,
             Member::remove_role,
             |e, role| e
