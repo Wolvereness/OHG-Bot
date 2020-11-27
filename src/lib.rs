@@ -17,6 +17,10 @@ mod util;
 use models::DiscordCredentials;
 use crate::models::DatabaseHandle;
 use wither::mongodb::Database;
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
 
 pub const DATABASE_NAME: &'static str = "ohg";
 
@@ -39,7 +43,8 @@ pub async fn main() {
 
     let framework = StandardFramework::new()
         .configure(|c| c.prefix(&creds.prefix)) // set the bot's prefix to "~"
-        .group(&commands::GENERAL_GROUP);
+        .group(&commands::GENERAL_GROUP)
+        .after(print_errors);
 
     let mut client = Client::builder(&creds.token)
         .event_handler(commands::Handler)
@@ -56,4 +61,27 @@ pub async fn main() {
     if let Err(why) = client.start().await {
         println!("An error occurred while running the client: {:?}", why);
     }
+}
+
+#[serenity::framework::standard::macros::hook]
+async fn print_errors(
+    _: &serenity::prelude::Context,
+    _: &serenity::model::channel::Message,
+    cmd_name: &str,
+    error: serenity::framework::standard::CommandResult,
+) {
+    let error = if let Err(e) = error {
+        e
+    } else {
+        return;
+    };
+    println!(
+        "{} {}: {:#?}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("<1970 not supported")
+            .as_millis(),
+        cmd_name,
+        error,
+    );
 }
