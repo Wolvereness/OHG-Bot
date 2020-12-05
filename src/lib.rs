@@ -9,18 +9,19 @@ use serenity::{
     }
 };
 use wither::prelude::*;
-
-pub mod models;
-mod commands;
-mod util;
-
-use models::DiscordCredentials;
-use crate::models::DatabaseHandle;
+use crate::models::{
+    DatabaseHandle,
+    DiscordCredentials,
+};
 use wither::mongodb::Database;
 use std::time::{
     SystemTime,
     UNIX_EPOCH,
 };
+
+pub mod models;
+mod commands;
+mod util;
 
 pub const DATABASE_NAME: &'static str = "ohg";
 
@@ -44,6 +45,7 @@ pub async fn main() {
     let framework = StandardFramework::new()
         .configure(|c| c.prefix(&creds.prefix)) // set the bot's prefix to "~"
         .group(&commands::GENERAL_GROUP)
+        .group(&commands::ROLES_GROUP)
         .after(print_errors);
 
     let mut client = Client::builder(&creds.token)
