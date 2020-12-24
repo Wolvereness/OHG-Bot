@@ -16,8 +16,6 @@ use serenity::{
    },
 };
 
-use crate::util::Mentionable;
-
 mod roles;
 pub use roles::ROLES_GROUP;
 
