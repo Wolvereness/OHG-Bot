@@ -1082,6 +1082,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ohg-bot-emoji"
+version = "0.1.0"
+
+[[package]]
 name = "ohg-bot-headers"
 version = "0.1.0"
 dependencies = [
@@ -1094,6 +1098,15 @@ dependencies = [
 [[package]]
 name = "ohg-bot-rpg"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ohg-bot-emoji",
+ "ohg-bot-headers",
+ "serde",
+ "serde_derive",
+ "typetag",
+ "wither",
+]
 
 [[package]]
 name = "once_cell"

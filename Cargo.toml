@@ -3,4 +3,5 @@ members = [
     "core",
     "headers",
     "rpg",
+    "emoji",
 ]

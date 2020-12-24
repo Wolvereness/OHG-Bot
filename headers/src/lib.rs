@@ -9,8 +9,8 @@ use async_trait::async_trait;
 use typetag;
 
 type State = Box<dyn CharacterState>;
-type Reaction = &'static str;
-type Reactions = ArrayVec<[Reaction; 20]>;
+pub type Reaction = &'static str;
+pub type Reactions = ArrayVec<[Reaction; 20]>;
 
 #[derive(Debug)]
 pub enum Action {
