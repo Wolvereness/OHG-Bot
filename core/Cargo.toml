@@ -4,7 +4,9 @@ version = "0.1.0"
 authors = ["Wolvereness <wesley.d.wolfe+git@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["rpg"]
+rpg = ["ohg-bot-rpg"]
 
 [dependencies.serenity]
 version = "*"
@@ -20,4 +22,4 @@ serde_derive = "*"
 futures = "*"
 byteorder = "*"
 ohg-bot-headers = { path = "../headers" }
-ohg-bot-rpg = { path = "../rpg" }
+ohg-bot-rpg = { path = "../rpg", optional = true }
