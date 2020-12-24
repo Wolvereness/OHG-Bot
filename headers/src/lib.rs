@@ -1,6 +1,9 @@
-use std::fmt::{
-    Display,
-    Debug,
+use std::{
+    error::Error,
+    fmt::{
+        Display,
+        Debug,
+    },
 };
 
 use arrayvec::ArrayVec;
@@ -11,6 +14,7 @@ use typetag;
 type State = Box<dyn CharacterState>;
 pub type Reaction = &'static str;
 pub type Reactions = ArrayVec<[Reaction; 20]>;
+pub type StateResult = Result<Action, Box<dyn Error>>;
 
 #[derive(Debug)]
 pub enum Action {
@@ -32,7 +36,7 @@ impl Action {
 #[typetag::serde(tag = "state")]
 #[async_trait]
 pub trait CharacterState: Display + Debug {
-    async fn action(self: Box<Self>, database: &Database, reaction: Reaction) -> Action;
+    async fn action(self: Box<Self>, database: &Database, reaction: Reaction) -> StateResult;
 
     async fn reactions(&self, database: &Database) -> Reactions;
 }
