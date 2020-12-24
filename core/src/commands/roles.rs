@@ -24,14 +24,12 @@ use serenity::{
     builder::CreateEmbed,
 };
 use crate::{
-    models::{
-        DatabaseHandle,
-        RoleAssociation,
-    },
+    models::RoleAssociation,
     util::{
         get_role_associations,
         Mentionable,
     },
+    DatabaseHandle,
 };
 
 #[group]

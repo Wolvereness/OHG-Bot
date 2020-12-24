@@ -1,0 +1,3 @@
+[submodule "rpg"]
+    path = rpg
+    url = git@github.com:Wolvereness/ohg-bot-rpg.git

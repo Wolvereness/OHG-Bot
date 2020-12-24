@@ -1,21 +1,6 @@
-[package]
-name = "ohg-bot-lib"
-version = "0.1.0"
-authors = ["Wolvereness <wesley.d.wolfe+git@gmail.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies.serenity]
-version = "*"
-git = "git://github.com/serenity-rs/serenity"
-rev = "e5218498c1d2c026084d7f7efd6788571bc6170e"
-
-[dependencies]
-tokio = { version = "*", features = [ "macros" ] }
-wither = "0.9.0-alpha.2"
-wither_derive = "0.9.0-alpha.2"
-serde = "*"
-serde_derive = "*"
-futures = "*"
-byteorder = "*"
+[workspace]
+members = [
+    "core",
+    "headers",
+    "rpg",
+]

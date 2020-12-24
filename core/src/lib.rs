@@ -1,23 +1,28 @@
-use std::fs::read_to_string;
+use std::{
+    fs::read_to_string,
+    time::{
+        SystemTime,
+        UNIX_EPOCH,
+    },
+};
 
 use serenity::{
     client::{
         Client,
     },
     framework::standard::{
+        CommandResult,
+        macros::hook,
         StandardFramework,
-    }
+    },
+    prelude::TypeMapKey,
 };
-use wither::prelude::*;
-use crate::models::{
-    DatabaseHandle,
-    DiscordCredentials,
+use wither::{
+    mongodb::Database,
+    prelude::*
 };
-use wither::mongodb::Database;
-use std::time::{
-    SystemTime,
-    UNIX_EPOCH,
-};
+
+use crate::models::DiscordCredentials;
 
 pub mod models;
 mod commands;
@@ -33,6 +38,12 @@ pub async fn connect_db() -> Database {
         .await
         .expect("Failed to connect")
         .database(DATABASE_NAME)
+}
+
+struct DatabaseHandle;
+
+impl TypeMapKey for DatabaseHandle {
+    type Value = Database;
 }
 
 pub async fn main() {
@@ -57,6 +68,7 @@ pub async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<DatabaseHandle>(db);
+        data.insert::<DiscordCredentials>(creds);
     }
 
     // start listening for events by starting a single shard
@@ -65,12 +77,12 @@ pub async fn main() {
     }
 }
 
-#[serenity::framework::standard::macros::hook]
+#[hook]
 async fn print_errors(
     _: &serenity::prelude::Context,
     _: &serenity::model::channel::Message,
     cmd_name: &str,
-    error: serenity::framework::standard::CommandResult,
+    error: CommandResult,
 ) {
     let error = if let Err(e) = error {
         e

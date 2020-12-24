@@ -8,15 +8,8 @@ use wither::prelude::*;
 use serenity::model::prelude::*;
 use wither::bson::oid::ObjectId;
 use serenity::prelude::*;
-use wither::mongodb::Database;
 
 pub use shim::Required as Shim;
-
-pub struct DatabaseHandle;
-
-impl TypeMapKey for DatabaseHandle {
-    type Value = Database;
-}
 
 #[derive(Model, Deserialize, Serialize)]
 pub struct DiscordCredentials {
@@ -27,6 +20,12 @@ pub struct DiscordCredentials {
     pub token: String,
     pub bot_id: String,
     pub prefix: String,
+    #[serde(with = "shim::Required")]
+    pub operator: UserId,
+}
+
+impl TypeMapKey for DiscordCredentials {
+    type Value = DiscordCredentials;
 }
 
 #[derive(Model, Deserialize, Serialize, Debug)]
@@ -49,4 +48,34 @@ pub struct RoleStatus {
     pub role: RoleId,
 }
 
+#[derive(Model, Deserialize, Serialize, Debug)]
+pub struct Runner {
+    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
+    pub id: Option<ObjectId>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub payload: Option<String>,
+    pub command: Vec<String>,
+}
 
+pub type Runners = Vec<Runner>;
+
+#[derive(Model, Deserialize, Serialize, Debug)]
+pub struct SubSystem {
+    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub name: String,
+    pub start: Runners,
+    pub stop: Runners,
+}
+
+
+#[derive(Model, Deserialize, Serialize, Debug)]
+pub struct System {
+    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
+    pub id: Option<ObjectId>,
+    #[serde(with = "shim::Required")]
+    pub server: GuildId,
+    pub boot: Runners,
+    pub shutdown: Runners,
+    pub sub_system: SubSystem,
+}

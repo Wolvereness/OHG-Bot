@@ -1,4 +1,4 @@
-use ohg_bot_lib::{models, connect_db};
+use ohg_bot_core::{models, connect_db};
 use wither::Model;
 use serenity::model::prelude::*;
 
@@ -13,6 +13,10 @@ pub async fn main() {
             token: input("Bot token:"),
             bot_id: input("Bot id:"),
             prefix: input("Command prefix:"),
+            operator: input("Operator id:")
+                .parse()
+                .map(UserId)
+                .expect("Bad operator id"),
         }
             .save(&db, None)
             .await

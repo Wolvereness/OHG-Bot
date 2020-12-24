@@ -1,7 +1,15 @@
-use ohg_bot_lib::models::{RoleAssociation, RoleStatus};
-use wither::{Model, ModelCursor};
+use ohg_bot_core::{
+    models::{
+        RoleAssociation,
+        RoleStatus,
+    },
+    connect_db,
+};
+use wither::{
+    Model,
+    ModelCursor,
+};
 use futures::StreamExt;
-use ohg_bot_lib::connect_db;
 
 pub async fn main() {
     let db = connect_db().await;

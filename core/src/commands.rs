@@ -1,4 +1,7 @@
-use std::fmt::Write as _;
+use std::{
+    fmt::Write as _,
+};
+
 use serenity::{
     async_trait,
     prelude::*,
@@ -10,8 +13,10 @@ use serenity::{
             command,
             group
         },
-    },
+   },
 };
+
+use crate::util::Mentionable;
 
 mod roles;
 pub use roles::ROLES_GROUP;

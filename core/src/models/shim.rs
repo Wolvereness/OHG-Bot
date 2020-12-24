@@ -112,7 +112,7 @@ impl From<Required> for Bson {
 }
 
 macro_rules! implement {
-    ($t:ty) => {
+    ($($t:ty;)*) => {$(
         impl From<$t> for Required {
             #[inline(always)]
             fn from(value: $t) -> Self {
@@ -126,9 +126,12 @@ macro_rules! implement {
                 <$t as From<u64>>::from(<Required as Into<u64>>::into(value))
             }
         }
-    };
+    )*};
 }
 
-implement!(ChannelId);
-implement!(RoleId);
-implement!(GuildId);
+implement!(
+    ChannelId;
+    RoleId;
+    GuildId;
+    UserId;
+);

@@ -1008,11 +1008,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d3b63360ec3cb337817c2dbd47ab4a0f170d285d8e5a2064600f3def1402397"
 
 [[package]]
-name = "ohg-bot-lib"
+name = "ohg-bot-core"
 version = "0.1.0"
 dependencies = [
  "byteorder",
  "futures",
+ "ohg-bot-headers",
+ "ohg-bot-rpg",
  "serde",
  "serde_derive",
  "serenity",
@@ -1020,6 +1022,14 @@ dependencies = [
  "wither",
  "wither_derive",
 ]
+
+[[package]]
+name = "ohg-bot-headers"
+version = "0.1.0"
+
+[[package]]
+name = "ohg-bot-rpg"
+version = "0.1.0"
 
 [[package]]
 name = "once_cell"
