@@ -35,7 +35,7 @@ impl Action {
 
 #[typetag::serde(tag = "state")]
 #[async_trait]
-pub trait CharacterState: Display + Debug {
+pub trait CharacterState: Display + Debug + Send + Sync {
     async fn action(self: Box<Self>, database: &Database, reaction: Reaction) -> StateResult;
 
     async fn reactions(&self, database: &Database) -> Reactions;
