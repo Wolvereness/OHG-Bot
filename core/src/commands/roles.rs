@@ -256,7 +256,10 @@ async fn send_message_not_yet_implemented(ctx: &Context, msg: &Message) -> Comma
         .reference_message(msg)
         .embed(|e| e
             .title("I can't do that yet!")
-            .description("At some future date, I'll be able to find the group you want.\n\nFor now, please try to join/leave in the respective channel.")
+            .description("\
+                At some future date, I'll be able to find the group you want.\
+                \n\nFor now, please try to join/leave in the respective channel.\
+            ")
         )
     ).await?;
     Ok(())
@@ -267,7 +270,13 @@ async fn send_message_no_group_found(ctx: &Context, msg: &Message) -> CommandRes
         .reference_message(msg)
         .embed(|e| e
             .title("No groups found!")
-            .description(format_args!("No group configured for {}.\nNo generic group configured for the server.", Mentionable::from(msg.channel_id)))
+            .description(format_args!(
+                "\
+                    No group configured for {}.\
+                    \nNo generic group configured for the server.\
+                ",
+                Mentionable::from(msg.channel_id)),
+            )
         )
     ).await?;
     Ok(())
@@ -279,7 +288,11 @@ async fn send_message_no_group_found(ctx: &Context, msg: &Message) -> CommandRes
 async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild_id.ok_or("No guild present")?;
     async fn bad_message(ctx: &Context, msg: &Message) -> CommandResult {
-        const CONTENT: &'static str = "One or two parameters.\nOne may be a reference to the channel.\nOne must be either a reference to the group, or the group ID.";
+        const CONTENT: &'static str = "\
+            One or two parameters.\
+            \nOne may be a reference to the channel.\
+            \nOne must be either a reference to the group, or the group ID.\
+        ";
         msg.reply(ctx, CONTENT).await?;
         return Ok(());
     }
