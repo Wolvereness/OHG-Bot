@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use std::{
     error::Error,
     fmt::{
@@ -12,9 +14,6 @@ use async_trait::async_trait;
 use typetag;
 
 type State = Box<dyn CharacterState>;
-pub type Reaction = &'static str;
-pub type Reactions = ArrayVec<[Reaction; 20]>;
-pub type StateResult = Result<Action, Box<dyn Error>>;
 
 #[derive(Debug)]
 pub enum Action {
@@ -22,6 +21,15 @@ pub enum Action {
     Changed(State),
     BadReact(State),
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct StateReaction {
+    pub emoji: &'static str,
+    pub description: &'static str,
+}
+
+pub type Reactions = ArrayVec<[StateReaction; 20]>;
+pub type StateResult = Result<Action, Box<dyn Error>>;
 
 impl Action {
     pub fn inner(self) -> State {
@@ -36,7 +44,7 @@ impl Action {
 #[typetag::serde(tag = "state")]
 #[async_trait]
 pub trait CharacterState: Display + Debug + Send + Sync {
-    async fn action(self: Box<Self>, database: &Database, reaction: Reaction) -> StateResult;
+    async fn action(self: Box<Self>, database: &Database, reaction: &str) -> StateResult;
 
     async fn reactions(&self, database: &Database) -> Reactions;
 }
