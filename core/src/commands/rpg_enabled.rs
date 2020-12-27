@@ -17,7 +17,6 @@ use serenity::{
 };
 use tokio::sync::MutexGuard;
 use ohg_bot_headers::{
-    StateReaction,
     Reactions,
     CreateEmbed,
 };
@@ -144,7 +143,9 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let reactions = initial.reactions(db);
     let rpg_states_lock = rpg_states.lock();
     let display = initial.display(db);
-    let (reactions, mut rpg_states_lock, display): (Reactions, MutexGuard<'_, RPGStateHolder>, _) = join!(reactions, rpg_states_lock, display);
+    let (reactions, mut rpg_states_lock, display): (_, MutexGuard<'_, RPGStateHolder>, _) =
+        join!(reactions, rpg_states_lock, display);
+    let reactions: Reactions = reactions?;
 
     let display: CreateEmbed = display?;
     let message = msg.channel_id.send_message(ctx, |message| message

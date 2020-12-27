@@ -23,7 +23,7 @@ pub struct StateReaction {
     pub description: &'static str,
 }
 
-pub type Error = Box<dyn std::error::Error>;
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Reactions = ArrayVec<[StateReaction; 20]>;
 
 impl Action {
