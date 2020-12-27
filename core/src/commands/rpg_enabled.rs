@@ -15,15 +15,23 @@ use serenity::{
         },
     },
 };
+use tokio::sync::MutexGuard;
+use ohg_bot_headers::{
+    StateReaction,
+    Reactions,
+    CreateEmbed,
+};
 use crate::{
     models::{
         RPGState,
         RPGChannel,
     },
-    util::Mentionable,
+    util::{
+        Mentionable,
+        RPGStateHolder,
+    },
     DatabaseHandle,
 };
-use ohg_bot_headers::StateReaction;
 
 #[group]
 #[commands(play, rpg_channel)]
@@ -87,7 +95,7 @@ async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
 #[cfg(feature = "rpg")]
 async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     msg.channel_id.broadcast_typing(ctx).await?;
-    let defined_name = args.rest();
+    let mut defined_name = args.rest().trim();
     if
         defined_name.len() > 30
         || defined_name.contains(|c: char|
@@ -105,38 +113,35 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         return Ok(())
     }
 
+    let author_nick: String;
+    if defined_name.is_empty() {
+        if let Some(nick) = msg.author_nick(ctx).await {
+            author_nick = nick;
+            defined_name = (&author_nick).trim();
+        } else {
+            defined_name = (&msg.author.name).trim();
+        };
+    }
     let author_mention = Mentionable::from(&msg.author);
 
     let data_lock = ctx.data.read().await;
     let db: &Database = data_lock.get::<DatabaseHandle>().ok_or("Database not present")?;
 
-    let initial = if defined_name.is_empty() {
-        ohg_bot_rpg::initial(&author_mention)
-    } else {
-        ohg_bot_rpg::initial(defined_name)
-    };
-    let reactions = initial.reactions(db).await;
+    let initial = ohg_bot_rpg::initial(defined_name);
     let rpg_states = data_lock.get::<RPGState>().ok_or("No RPG states?")?;
-    let mut rpg_states_lock = rpg_states.lock().await;
+
+    // Get the lock before the message, in case a reaction appears before the unyield.
+    let reactions = initial.reactions(db);
+    let rpg_states_lock = rpg_states.lock();
+    let display = initial.display(db);
+    let (reactions, mut rpg_states_lock, display): (Reactions, MutexGuard<'_, RPGStateHolder>, _) = join!(reactions, rpg_states_lock, display);
+
+    let display: CreateEmbed = display?;
     let message = msg.channel_id.send_message(ctx, |message| message
         .reference_message(msg)
+        .content(author_mention)
         .embed(|e| {
-            if defined_name.is_empty() {
-                e.title(format_args!(
-                    "{}'s Adventure",
-                    author_mention,
-                ));
-            } else {
-                e.title(format_args!(
-                    "{}'s ({}) Adventure",
-                    defined_name,
-                    author_mention,
-                ));
-            }
-            e.description(&initial);
-            for StateReaction { emoji, description, } in reactions.iter().copied() {
-                e.field(emoji, description, true);
-            }
+            *e = display;
             e
         })
     ).await?;

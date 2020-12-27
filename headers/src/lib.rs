@@ -1,17 +1,15 @@
 #![deny(rust_2018_idioms)]
 
-use std::{
-    error::Error,
-    fmt::{
-        Display,
-        Debug,
-    },
+use std::fmt::{
+    Display,
+    Debug,
 };
 
 use arrayvec::ArrayVec;
 use wither::mongodb::Database;
 use async_trait::async_trait;
 use typetag;
+pub use serenity::builder::CreateEmbed;
 
 type State = Box<dyn CharacterState>;
 
@@ -28,8 +26,8 @@ pub struct StateReaction {
     pub description: &'static str,
 }
 
+pub type Error = Box<dyn std::error::Error>;
 pub type Reactions = ArrayVec<[StateReaction; 20]>;
-pub type StateResult = Result<Action, Box<dyn Error>>;
 
 impl Action {
     pub fn inner(self) -> State {
@@ -43,8 +41,19 @@ impl Action {
 
 #[typetag::serde(tag = "state")]
 #[async_trait]
-pub trait CharacterState: Display + Debug + Send + Sync {
-    async fn action(self: Box<Self>, database: &Database, reaction: &str) -> StateResult;
+pub trait CharacterState: Debug + Send + Sync {
+    async fn action(self: Box<Self>, database: &Database, reaction: &str)
+        -> Result<Action, Error>;
 
-    async fn reactions(&self, database: &Database) -> Reactions;
+    async fn reactions(&self, database: &Database)
+        -> Result<Reactions, Error>;
+
+    async fn display(&self, database: &Database)
+        -> Result<CreateEmbed, Error>;
+}
+
+pub fn add_reactions(embed: &mut CreateEmbed, reactions: &Reactions) {
+    for StateReaction { emoji, description, } in reactions.iter().copied() {
+        embed.field(emoji, description, true);
+    }
 }
