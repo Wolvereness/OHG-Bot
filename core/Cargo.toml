@@ -23,3 +23,4 @@ futures = "*"
 byteorder = "*"
 ohg-bot-headers = { path = "../headers" }
 ohg-bot-rpg = { path = "../rpg", optional = true }
+cache_2q = "*"

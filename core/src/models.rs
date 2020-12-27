@@ -10,6 +10,9 @@ use wither::bson::oid::ObjectId;
 use serenity::prelude::*;
 
 pub use shim::Required as Shim;
+use ohg_bot_headers::CharacterState;
+use std::collections::HashSet;
+use crate::util::RPGStateHolder;
 
 #[derive(Model, Deserialize, Serialize)]
 pub struct DiscordCredentials {
@@ -28,13 +31,23 @@ impl TypeMapKey for DiscordCredentials {
     type Value = DiscordCredentials;
 }
 
+impl TypeMapKey for RPGChannel {
+    type Value = HashSet<ChannelId>;
+}
+
+impl TypeMapKey for RPGState {
+    type Value = Mutex<RPGStateHolder>;
+}
+
 #[derive(Model, Deserialize, Serialize, Debug)]
 pub struct RoleAssociation {
     #[serde(rename="_id", skip_serializing_if="Option::is_none")]
     pub id: Option<ObjectId>,
     #[serde(default, with = "shim::Optional", skip_serializing_if="Option::is_none")]
+    #[model(index(index="hashed"))]
     pub channel: Option<ChannelId>,
     #[serde(default, with = "shim::Optional", skip_serializing_if="Option::is_none")]
+    #[model(index(index="hashed"))]
     pub server: Option<GuildId>,
     #[serde(with = "shim::Required")]
     pub role: RoleId,
@@ -68,7 +81,6 @@ pub struct SubSystem {
     pub stop: Runners,
 }
 
-
 #[derive(Model, Deserialize, Serialize, Debug)]
 pub struct System {
     #[serde(rename="_id", skip_serializing_if="Option::is_none")]
@@ -78,4 +90,25 @@ pub struct System {
     pub boot: Runners,
     pub shutdown: Runners,
     pub sub_system: SubSystem,
+}
+
+#[derive(Model, Deserialize, Serialize, Debug)]
+pub struct RPGChannel {
+    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub channel: ChannelId,
+}
+
+#[derive(Model, Deserialize, Serialize, Debug)]
+pub struct RPGState {
+    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub state: Box<dyn CharacterState>,
+    pub active: bool,
+    #[serde(with = "shim::Required")]
+    #[model(index(index="dsc", with(field("iteration", index="dsc"))))]
+    pub message: MessageId,
+    #[serde(with = "shim::Required")]
+    pub owner: UserId,
+    pub iteration: u32,
 }

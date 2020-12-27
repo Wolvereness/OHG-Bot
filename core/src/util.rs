@@ -1,13 +1,15 @@
 use serenity::model::prelude::*;
 use std::fmt::{Display, Formatter};
 use serenity::framework::standard::CommandResult;
-use crate::models::{RoleAssociation, Shim};
+use crate::models::{RoleAssociation, Shim, RPGState};
 use wither::{
     mongodb::Database,
     bson::doc,
     Model,
 };
 use futures::TryStreamExt;
+use cache_2q::Cache;
+use std::collections::HashSet;
 
 pub async fn get_role_associations(db: &Database, channel: ChannelId, guild: GuildId) -> CommandResult<Vec<RoleAssociation>> {
     RoleAssociation::find(
@@ -77,4 +79,21 @@ impl Display for Mentionable {
                 f.write_fmt(format_args!("<{}:_:{}>", if animated { "a" } else { "" }, id.0)),
         }
     }
+}
+
+pub struct OptionalDisplay<T>(pub Option<T>);
+
+impl<T: Display> Display for OptionalDisplay<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(value) = &self.0 {
+            value.fmt(f)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+pub struct RPGStateHolder {
+    pub cache: Cache<MessageId, Option<RPGState>>,
+    pub lockout: HashSet<MessageId>,
 }

@@ -29,7 +29,7 @@ impl Optional {
         impl<'de> Visitor<'de> for Visitable {
             type Value = Option<Required>;
 
-            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
                 write!(formatter, "Expecting Option")
             }
 
