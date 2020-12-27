@@ -1,9 +1,6 @@
 #![deny(rust_2018_idioms)]
 
-use std::fmt::{
-    Display,
-    Debug,
-};
+use std::fmt::Debug;
 
 use arrayvec::ArrayVec;
 use wither::mongodb::Database;

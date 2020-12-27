@@ -1,7 +1,6 @@
 #![deny(rust_2018_idioms)]
 
 use std::{
-    collections::HashSet,
     fs::read_to_string,
     time::{
         SystemTime,
@@ -24,17 +23,8 @@ use wither::{
     mongodb::Database,
     prelude::*
 };
-use futures::stream::StreamExt;
 
-use crate::{
-    models::{
-        DiscordCredentials,
-        RPGChannel,
-        RPGState,
-    },
-    util::RPGStateHolder,
-};
-use cache_2q::Cache;
+use crate::models::DiscordCredentials;
 
 pub mod models;
 mod commands;
@@ -82,6 +72,18 @@ pub async fn main() {
         let mut data = client.data.write().await;
         #[cfg(feature = "rpg")]
         {
+            use std::collections::HashSet;
+
+            use cache_2q::Cache;
+            use futures::stream::StreamExt;
+            use crate::{
+                models::{
+                    RPGChannel,
+                    RPGState,
+                },
+                util::RPGStateHolder,
+            };
+
             let mut channels = HashSet::new();
             let mut db_channels = RPGChannel::find(&db, None, None).await
                 .expect("Failed to retrieve RPG channels");

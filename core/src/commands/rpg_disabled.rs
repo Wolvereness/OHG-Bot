@@ -1,34 +1,13 @@
-use std::{
-    result::Result,
-    fmt::Write as _,
-    future::Future,
-};
-use wither::{
-    Model,
-    mongodb::Database,
-};
-use futures::join;
 use serenity::{
     prelude::*,
     model::prelude::*,
     framework::standard::{
-        Args,
-        CommandError,
         CommandResult,
         macros::{
             command,
             group,
         },
     },
-    builder::CreateEmbed,
-};
-use crate::{
-    models::RoleAssociation,
-    util::{
-        get_role_associations,
-        Mentionable,
-    },
-    DatabaseHandle,
 };
 
 #[group]
