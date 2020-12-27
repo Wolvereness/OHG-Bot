@@ -134,4 +134,5 @@ implement!(
     RoleId;
     GuildId;
     UserId;
+    MessageId;
 );

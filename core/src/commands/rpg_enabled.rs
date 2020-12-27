@@ -404,7 +404,7 @@ async fn obtain_state(
     let state: Option<RPGState> = RPGState::find_one(
         db,
         Some(doc!{
-            "message": doc!{ "$eq": &Shim::from(channel) },
+            "message": doc!{ "$eq": &Shim::from(message) },
         }),
         Some(options),
     ).await?;
