@@ -246,7 +246,6 @@ pub async fn reaction_add(ctx: &Context, reaction: Reaction) -> CommandResult {
             obtain_state(
                 db,
                 states_mutex,
-                channel,
                 message,
                 user,
             ).await?
@@ -362,7 +361,6 @@ async fn unlock(
 async fn obtain_state(
     db: &Database,
     mutex: &Mutex<RPGStateHolder>,
-    channel: ChannelId,
     message: MessageId,
     user: UserId,
 ) -> CommandResult<Option<RPGState>> {
