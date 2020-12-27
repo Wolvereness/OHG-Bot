@@ -96,6 +96,7 @@ pub struct System {
 pub struct RPGChannel {
     #[serde(rename="_id", skip_serializing_if="Option::is_none")]
     pub id: Option<ObjectId>,
+    #[serde(with = "shim::Required")]
     pub channel: ChannelId,
 }
 
