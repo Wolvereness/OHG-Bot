@@ -111,5 +111,5 @@ pub struct RPGState {
     pub message: MessageId,
     #[serde(with = "shim::Required")]
     pub owner: UserId,
-    pub iteration: u32,
+    pub iteration: i32,
 }

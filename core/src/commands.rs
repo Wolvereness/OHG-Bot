@@ -29,7 +29,6 @@ pub use rpg_enabled::RPG_GROUP;
 #[cfg(not(feature = "rpg"))]
 pub use rpg_disabled::RPG_GROUP;
 
-
 #[group]
 #[commands(ping, parrot)]
 pub struct General;
