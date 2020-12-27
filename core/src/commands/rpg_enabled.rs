@@ -125,6 +125,16 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let author_mention = Mentionable::from(&msg.author);
 
     let data_lock = ctx.data.read().await;
+    if !data_lock.get::<RPGChannel>().ok_or("Channels not present")?.contains(&msg.channel_id) {
+        msg.channel_id.send_message(ctx, |message| message
+            .reference_message(msg)
+            .embed(|e| e
+                .title("No RPG to be had here!")
+                .description(format_args!("The RPG isn't enabled in {}.", Mentionable::from(msg.channel_id)))
+            )
+        ).await?;
+        return Ok(())
+    }
     let db: &Database = data_lock.get::<DatabaseHandle>().ok_or("Database not present")?;
 
     let initial = ohg_bot_rpg::initial(defined_name);
