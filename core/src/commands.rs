@@ -17,6 +17,8 @@ use serenity::{
 };
 
 mod roles;
+pub use roles::ROLES_GROUP;
+
 #[cfg(feature = "rpg")]
 mod rpg_enabled;
 #[cfg(not(feature = "rpg"))]
@@ -26,7 +28,7 @@ mod rpg_disabled;
 pub use rpg_enabled::RPG_GROUP;
 #[cfg(not(feature = "rpg"))]
 pub use rpg_disabled::RPG_GROUP;
-pub use roles::ROLES_GROUP;
+
 
 #[group]
 #[commands(ping, parrot)]

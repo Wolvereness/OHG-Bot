@@ -69,6 +69,7 @@ pub async fn main() {
         .configure(|c| c.prefix(&creds.prefix)) // set the bot's prefix to "~"
         .group(&commands::GENERAL_GROUP)
         .group(&commands::ROLES_GROUP)
+        .group(&commands::RPG_GROUP)
         .after(print_errors);
 
     let mut client = Client::builder(&creds.token)

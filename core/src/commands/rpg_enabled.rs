@@ -33,6 +33,7 @@ pub struct RPG;
 #[only_in("guild")]
 #[required_permissions("ADMINISTRATOR")]
 async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    msg.channel_id.broadcast_typing(ctx).await?;
     async fn bad_message(ctx: &Context, msg: &Message) -> CommandResult {
         const CONTENT: &'static str = "\
             Specify exactly one channel.\
@@ -85,6 +86,7 @@ async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
 #[only_in("guild")]
 #[cfg(feature = "rpg")]
 async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    msg.channel_id.broadcast_typing(ctx).await?;
     let defined_name = args.rest();
     if
         defined_name.len() > 30
