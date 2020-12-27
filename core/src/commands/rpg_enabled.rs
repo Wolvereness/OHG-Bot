@@ -225,12 +225,12 @@ pub async fn reaction_add(ctx: &Context, reaction: Reaction) -> CommandResult {
     };
     let channel = reaction.channel_id;
     let message = reaction.message_id;
-    let data_lock = ctx.data.read().await;
     let user = if let Some(user) = reaction.user_id {
         user
     } else {
         return Ok(());
     };
+    let data_lock = ctx.data.read().await;
     if !data_lock
         .get::<RPGChannel>()
         .ok_or("No RPG Channels")?
