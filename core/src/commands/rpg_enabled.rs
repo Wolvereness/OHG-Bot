@@ -1,8 +1,15 @@
 use wither::{
+    bson::doc,
     Model,
-    mongodb::Database,
+    mongodb::{
+        Database,
+        options::FindOneOptions,
+    },
 };
-use futures::join;
+use futures::{
+    join,
+    future::join_all,
+};
 use serenity::{
     prelude::*,
     model::prelude::*,
@@ -16,14 +23,18 @@ use serenity::{
     },
 };
 use tokio::sync::MutexGuard;
+use cache_2q::Entry;
 use ohg_bot_headers::{
+    Action,
     Reactions,
     CreateEmbed,
+    StateReaction,
 };
 use crate::{
     models::{
         RPGState,
         RPGChannel,
+        Shim,
     },
     util::{
         Mentionable,
@@ -140,32 +151,23 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let rpg_states = data_lock.get::<RPGState>().ok_or("No RPG states?")?;
 
     // Get the lock before the message, in case a reaction appears before the unyield.
-    let reactions = initial.reactions(db);
     let rpg_states_lock = rpg_states.lock();
     let display = initial.display(db);
-    let (reactions, mut rpg_states_lock, display): (_, MutexGuard<'_, RPGStateHolder>, _) =
-        join!(reactions, rpg_states_lock, display);
-    let reactions: Reactions = reactions?;
+    let (mut rpg_states_lock, display): (MutexGuard<'_, RPGStateHolder>, _) =
+        join!(rpg_states_lock, display);
+    let (reactions, embed): (Reactions, CreateEmbed) = display?;
 
-    let display: CreateEmbed = display?;
     let message = msg.channel_id.send_message(ctx, |message| message
         .reference_message(msg)
         .content(author_mention)
         .embed(|e| {
-            *e = display;
+            *e = embed;
             e
         })
     ).await?;
 
-    let reactions = async {
-        for reaction in reactions.into_iter() {
-            message.react(
-                ctx,
-                ReactionType::Unicode(reaction.emoji.to_string()),
-            ).await?;
-        }
-        Ok(()) as CommandResult
-    };
+    let reactions =
+        pre_fill_reactions(ctx, reactions, msg.channel_id, message.id);
 
     let mut state = RPGState {
         id: None,
@@ -174,6 +176,7 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         message: message.id,
         owner: msg.author.id,
         iteration: 0,
+        previous: None,
     };
     let save_state = state.save(db, None);
 
@@ -193,4 +196,235 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     Ok(())
+}
+
+async fn pre_fill_reactions(ctx: &Context, reactions: Reactions, channel: ChannelId, message: MessageId) -> CommandResult {
+    let mut buff = ReactionType::Unicode(String::new());
+    for reaction in reactions.into_iter() {
+        if let ReactionType::Unicode(buff) = &mut buff {
+            buff.clear();
+            buff.push_str(reaction.emoji);
+        } else {
+            unreachable!();
+        }
+
+        ctx.http.create_reaction(
+            channel.0,
+            message.0,
+            &buff,
+        ).await?;
+    }
+    Ok(())
+}
+
+pub async fn reaction_add(ctx: &Context, reaction: Reaction) -> CommandResult {
+    let emoji = if let ReactionType::Unicode(emoji) = &reaction.emoji {
+        emoji.as_str()
+    } else {
+        return Ok(());
+    };
+    let channel = reaction.channel_id;
+    let message = reaction.message_id;
+    let data_lock = ctx.data.read().await;
+    let user = if let Some(user) = reaction.user_id {
+        user
+    } else {
+        return Ok(());
+    };
+    if !data_lock
+        .get::<RPGChannel>()
+        .ok_or("No RPG Channels")?
+        .contains(&channel)
+    {
+        return Ok(());
+    }
+
+    let db = data_lock.get::<DatabaseHandle>().ok_or("No Database")?;
+    let states_mutex = data_lock.get::<RPGState>().ok_or("No States")?;
+    let state =
+        if let Some(state) =
+            obtain_state(
+                db,
+                states_mutex,
+                channel,
+                message,
+                user,
+            ).await?
+        {
+            state
+        } else {
+            return Ok(());
+        };
+
+    let result = operate_on_state(ctx, db, emoji, state, channel, message, user).await;
+    match result {
+        Ok(state) => {
+            unlock(states_mutex, Some(state), message).await;
+        },
+        Err(e) => {
+            unlock(states_mutex, None, message).await;
+            return Err(e);
+        },
+    }
+
+    Ok(())
+}
+
+async fn operate_on_state(
+    ctx: &Context,
+    db: &Database,
+    emoji: &str,
+    mut state: RPGState,
+    channel: ChannelId,
+    message: MessageId,
+    user: UserId,
+) -> CommandResult<Option<RPGState>> {
+    let old_reactions = state.state.reactions(db).await?;
+    let change: bool;
+    state.state = match state.state.action(db, emoji).await {
+        Ok(Action::NoChange(state)) => {
+            change = false;
+            state
+        },
+        Ok(Action::BadReact(state)) => {
+            change = false;
+            state
+        },
+        Ok(Action::Changed(state)) => {
+            change = true;
+            state
+        },
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    if !change {
+        return Ok(Some(state));
+    }
+    state.previous = state.id.take();
+    state.iteration += 1;
+
+    let deletions = join_all(old_reactions
+        .into_iter()
+        .map(|reaction: StateReaction| channel
+            .delete_reaction_emoji(
+                ctx,
+                message,
+                ReactionType::Unicode(reaction.emoji.to_string()),
+            )
+        )
+    );
+    let edit = async {
+        let (reactions, embed) = state.state.display(db).await?;
+
+        let save = state.save(db, None);
+        let edit = channel.edit_message(ctx, message, |e| e
+            .content(Mentionable::from(user))
+            .embed(|e| {
+                *e = embed;
+                e
+            })
+        );
+
+        let (save, edit) = join!(save, edit);
+        save?;
+        edit?;
+        return Ok(reactions) as CommandResult<Reactions>;
+    };
+    let (deletions, edit) = join!(deletions, edit);
+
+    for deletion in deletions {
+        deletion?;
+    }
+    pre_fill_reactions(ctx, edit?, channel, message).await?;
+
+    Ok(Some(state))
+}
+
+async fn unlock(
+    mutex: &Mutex<RPGStateHolder>,
+    state: Option<Option<RPGState>>,
+    message: MessageId,
+) {
+    let mut states = mutex.lock().await;
+    let RPGStateHolder {
+        cache,
+        lockout,
+    } = &mut *states;
+    if let Some(state) = state {
+        drop(cache.insert(message, state));
+    } else {
+        drop(cache.remove(&message));
+    }
+    lockout.remove(&message);
+}
+
+async fn obtain_state(
+    db: &Database,
+    mutex: &Mutex<RPGStateHolder>,
+    channel: ChannelId,
+    message: MessageId,
+    user: UserId,
+) -> CommandResult<Option<RPGState>> {
+    let mut states = mutex.lock().await;
+    let RPGStateHolder {
+        cache,
+        lockout,
+    } = &mut *states;
+    if lockout.contains(&message) {
+        return Ok(None);
+    }
+    let entry = match cache.entry(message) {
+        Entry::Occupied(mut occupied) => {
+            let occupied = occupied.get_mut();
+            let state = if let Some(state) = occupied.take() {
+                if state.owner != user {
+                    *occupied = Some(state);
+                    return Ok(None);
+                }
+                lockout.insert(message);
+                Some(state)
+            } else {
+                // There's no lockout,
+                // which means it's been looked up and set to None.
+                None
+            };
+            return Ok(state);
+        },
+        Entry::Vacant(vacant) =>
+            vacant.insert(None),
+    };
+
+    // We need to check the database
+
+    let mut options = FindOneOptions::default();
+    options.sort = Some(doc!{
+        "iteration": -1,
+    });
+    let state: Option<RPGState> = RPGState::find_one(
+        db,
+        Some(doc!{
+            "message": doc!{ "$eq": &Shim::from(channel) },
+        }),
+        Some(options),
+    ).await?;
+
+    let state = if let Some(state) = state {
+        state
+    } else {
+        // No value in the database
+        return Ok(None);
+    };
+    if !state.active {
+        // Set to inactive
+        return Ok(None);
+    }
+    if state.owner != user {
+        // Bad user, but remember the db lookup
+        *entry = Some(state);
+        return Ok(None);
+    }
+
+    lockout.insert(message);
+    Ok(Some(state))
 }

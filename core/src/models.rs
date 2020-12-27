@@ -112,4 +112,6 @@ pub struct RPGState {
     #[serde(with = "shim::Required")]
     pub owner: UserId,
     pub iteration: i32,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub previous: Option<ObjectId>,
 }

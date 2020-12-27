@@ -116,6 +116,10 @@ async fn print_errors(
     cmd_name: &str,
     error: CommandResult,
 ) {
+    print_errors_impl(cmd_name, error)
+}
+
+fn print_errors_impl(cmd_name: &str, error: CommandResult) {
     let error = if let Err(e) = error {
         e
     } else {

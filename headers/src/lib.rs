@@ -46,7 +46,7 @@ pub trait CharacterState: Debug + Send + Sync {
         -> Result<Reactions, Error>;
 
     async fn display(&self, database: &Database)
-        -> Result<CreateEmbed, Error>;
+        -> Result<(Reactions, CreateEmbed), Error>;
 }
 
 pub fn add_reactions(embed: &mut CreateEmbed, reactions: &Reactions) {

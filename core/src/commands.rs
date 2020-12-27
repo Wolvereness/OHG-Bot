@@ -37,6 +37,13 @@ pub struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
+    #[cfg(feature = "rpg")]
+    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
+        crate::print_errors_impl(
+            "RPG_Reaction_Add",
+            rpg_enabled::reaction_add(&ctx, reaction).await,
+        )
+    }
 }
 
 #[command]
