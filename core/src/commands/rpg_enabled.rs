@@ -230,6 +230,9 @@ pub async fn reaction_add(ctx: &Context, reaction: Reaction) -> CommandResult {
     } else {
         return Ok(());
     };
+    if user == ctx.cache.current_user_id() {
+        return Ok(());
+    }
     let data_lock = ctx.data.read().await;
     if !data_lock
         .get::<RPGChannel>()
