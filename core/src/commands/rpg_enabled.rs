@@ -100,6 +100,8 @@ async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     Ok(())
 }
 
+const ADDITIONAL_ALLOWED_CHARS: &'static [char] = &[' ', '-', '.'] as _;
+
 #[command]
 #[only_in("guild")]
 #[cfg(feature = "rpg")]
@@ -110,8 +112,9 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         defined_name.len() > 30
         || defined_name.contains(|c: char|
             !c.is_alphanumeric()
-            && c != ' '
+            && !ADDITIONAL_ALLOWED_CHARS.contains(&c)
         )
+        || !defined_name.contains(char::is_alphanumeric)
     {
         msg.channel_id.send_message(ctx, |message| message
             .reference_message(msg)
@@ -230,7 +233,7 @@ pub async fn reaction_add(ctx: &Context, reaction: Reaction) -> CommandResult {
     } else {
         return Ok(());
     };
-    if user == ctx.cache.current_user_id() {
+    if user == ctx.cache.current_user_id().await {
         return Ok(());
     }
     let data_lock = ctx.data.read().await;
