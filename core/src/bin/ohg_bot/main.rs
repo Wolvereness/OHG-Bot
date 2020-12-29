@@ -16,6 +16,11 @@ async fn main() {
                 dump::main().await;
                 return;
             },
+            #[cfg(feature = "rpg")]
+            "--rpg" => {
+                ohg_bot_rpg::main().await;
+                return;
+            },
             _ => {},
         }
     }
