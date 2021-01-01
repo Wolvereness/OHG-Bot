@@ -30,7 +30,7 @@ pub mod models;
 mod commands;
 mod util;
 
-pub const DATABASE_NAME: &'static str = "ohg";
+pub const DATABASE_NAME: &str = "ohg";
 
 pub async fn connect_db() -> Database {
     wither::mongodb::Client::with_uri_str(

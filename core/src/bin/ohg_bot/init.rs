@@ -5,7 +5,11 @@ use serenity::model::prelude::*;
 pub async fn main() {
     let db = connect_db().await;
 
-    if !models::DiscordCredentials::find_one(&db, None, None).await.expect("Failed to search discord credentials").is_some() {
+    if models::DiscordCredentials::find_one(&db, None, None)
+        .await
+        .expect("Failed to search discord credentials")
+        .is_none()
+    {
         models::DiscordCredentials {
             id: None,
             private: input("Private key:"),

@@ -59,7 +59,7 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         let (mut member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
         execute_contextual_role_change(
             ctx,
-            msg.into(),
+            msg,
             &mut member,
             associations,
             Member::add_role,
@@ -109,7 +109,7 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         let (mut member, associations) = load_member_and_associations(ctx, msg, guild, db).await?;
         execute_contextual_role_change(
             ctx,
-            msg.into(),
+            msg,
             &mut member,
             associations,
             Member::remove_role,
@@ -199,8 +199,8 @@ async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
     }
     description.push_str("```\n\n");
     for (ix, association) in associations.iter().enumerate() {
-        match association {
-            &RoleAssociation {
+        match *association {
+            RoleAssociation {
                 channel: Some(channel),
                 server: None,
                 role,
@@ -212,7 +212,7 @@ async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
                 Mentionable::from(role),
                 Mentionable::from(channel),
             )?,
-            &RoleAssociation {
+            RoleAssociation {
                 channel: None,
                 server: Some(server),
                 role,
@@ -288,7 +288,7 @@ async fn send_message_no_group_found(ctx: &Context, msg: &Message) -> CommandRes
 async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let guild = msg.guild_id.ok_or("No guild present")?;
     async fn bad_message(ctx: &Context, msg: &Message) -> CommandResult {
-        const CONTENT: &'static str = "\
+        const CONTENT: &str = "\
             One or two parameters.\
             \nOne may be a reference to the channel.\
             \nOne must be either a reference to the group, or the group ID.\
@@ -355,7 +355,8 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
             } else { Err(()) }
         } else { Ok(None) }
     };
-    let (db, channel, role): (_, Result<Option<ChannelId>, ()>, Result<Option<RoleId>, ()>) = join!(db, channel, role);
+    type PossibleParse<T> = Result<Option<T>, ()>;
+    let (db, channel, role): (_, PossibleParse<ChannelId>, PossibleParse<RoleId>) = join!(db, channel, role);
     let (db, associations): (_, Vec<RoleAssociation>) = db?;
     let db: &Database = db
         .get::<DatabaseHandle>()

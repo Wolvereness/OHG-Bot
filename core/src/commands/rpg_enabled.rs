@@ -53,7 +53,7 @@ pub struct RPG;
 async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     msg.channel_id.broadcast_typing(ctx).await?;
     async fn bad_message(ctx: &Context, msg: &Message) -> CommandResult {
-        const CONTENT: &'static str = "\
+        const CONTENT: &str = "\
             Specify exactly one channel.\
         ";
         msg.reply(ctx, CONTENT).await?;
@@ -100,7 +100,7 @@ async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     Ok(())
 }
 
-const ADDITIONAL_ALLOWED_CHARS: &'static [char] = &[' ', '-', '.'] as _;
+const ADDITIONAL_ALLOWED_CHARS: &[char] = &[' ', '-', '.'] as _;
 
 #[command]
 #[only_in("guild")]
@@ -334,7 +334,8 @@ async fn operate_on_state(
         let (save, edit) = join!(save, edit);
         save?;
         edit?;
-        return Ok(reactions) as CommandResult<Reactions>;
+
+        Ok(reactions) as CommandResult<Reactions>
     };
     let (deletions, edit) = join!(deletions, edit);
 
