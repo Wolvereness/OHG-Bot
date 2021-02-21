@@ -20,7 +20,10 @@ use serenity::{
     prelude::TypeMapKey,
 };
 use wither::{
-    mongodb::Database,
+    mongodb::{
+        Client as DBClient,
+        Database,
+    },
     prelude::*
 };
 
@@ -31,26 +34,42 @@ mod commands;
 mod util;
 
 pub const DATABASE_NAME: &str = "ohg";
+#[cfg(feature = "rpg")]
+pub const RPG_DATABASE_NAME: &str = "rpg";
 
-pub async fn connect_db() -> Database {
-    wither::mongodb::Client::with_uri_str(
+pub async fn connect_db() -> DatabaseHandle {
+    let client = DBClient::with_uri_str(
         &read_to_string("./db-url.txt")
             .expect("Failed to read db-url.txt")
     )
         .await
-        .expect("Failed to connect")
-        .database(DATABASE_NAME)
+        .expect("Failed to connect");
+    DatabaseHandle {
+        base: client.database(DATABASE_NAME),
+        #[cfg(feature = "rpg")]
+        rpg: client.database(RPG_DATABASE_NAME),
+        client,
+    }
 }
 
-struct DatabaseHandle;
+pub struct DatabaseHandle {
+    pub base: Database,
+    pub client: DBClient,
+    #[cfg(feature = "rpg")]
+    pub rpg: Database,
+}
 
 impl TypeMapKey for DatabaseHandle {
-    type Value = Database;
+    type Value = DatabaseHandle;
 }
 
 pub async fn main() {
-    let db = connect_db().await;
-    let creds: DiscordCredentials = DiscordCredentials::find_one(&db, None, None)
+    let database_handle = connect_db().await;
+    let creds: DiscordCredentials = DiscordCredentials::find_one(
+        &database_handle.base,
+        None,
+        None,
+    )
         .await
         .expect("Failed to search discord credentials")
         .expect("Failed to find discord credentials");
@@ -85,7 +104,7 @@ pub async fn main() {
             };
 
             let mut channels = HashSet::new();
-            let mut db_channels = RPGChannel::find(&db, None, None).await
+            let mut db_channels = RPGChannel::find(&database_handle.base, None, None).await
                 .expect("Failed to retrieve RPG channels");
             while let Some(channel) = db_channels.next().await {
                 let RPGChannel { channel, .. } = channel.expect("Failed to retrieve RPG channel");
@@ -99,7 +118,7 @@ pub async fn main() {
                 }.into()
             );
         }
-        data.insert::<DatabaseHandle>(db);
+        data.insert::<DatabaseHandle>(database_handle);
         data.insert::<DiscordCredentials>(creds);
     }
 

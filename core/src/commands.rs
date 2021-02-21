@@ -20,14 +20,13 @@ mod roles;
 pub use roles::ROLES_GROUP;
 
 #[cfg(feature = "rpg")]
-mod rpg_enabled;
+#[path = "commands/rpg_enabled.rs"]
+mod rpg;
 #[cfg(not(feature = "rpg"))]
-mod rpg_disabled;
+#[path = "commands/rpg_disabled.rs"]
+mod rpg;
 
-#[cfg(feature = "rpg")]
-pub use rpg_enabled::RPG_GROUP;
-#[cfg(not(feature = "rpg"))]
-pub use rpg_disabled::RPG_GROUP;
+pub use rpg::RPG_GROUP;
 
 #[group]
 #[commands(ping, parrot)]
@@ -41,7 +40,7 @@ impl EventHandler for Handler {
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
         crate::print_errors_impl(
             "RPG_Reaction_Add",
-            rpg_enabled::reaction_add(&ctx, reaction).await,
+            rpg::reaction_add(&ctx, reaction).await,
         )
     }
 }

@@ -1,15 +1,13 @@
 use serenity::model::prelude::*;
 use std::fmt::{Display, Formatter};
 use serenity::framework::standard::CommandResult;
-use crate::models::{RoleAssociation, Shim, RPGState};
+use crate::models::{RoleAssociation, Shim};
 use wither::{
     mongodb::Database,
     bson::doc,
     Model,
 };
 use futures::TryStreamExt;
-use cache_2q::Cache;
-use std::collections::HashSet;
 
 pub async fn get_role_associations(db: &Database, channel: ChannelId, guild: GuildId) -> CommandResult<Vec<RoleAssociation>> {
     RoleAssociation::find(
@@ -93,7 +91,8 @@ impl<T: Display> Display for OptionalDisplay<T> {
     }
 }
 
+#[cfg(feature = "rpg")]
 pub struct RPGStateHolder {
-    pub cache: Cache<MessageId, Option<RPGState>>,
-    pub lockout: HashSet<MessageId>,
+    pub cache: cache_2q::Cache<MessageId, Option<crate::models::RPGState>>,
+    pub lockout: std::collections::HashSet<MessageId>,
 }

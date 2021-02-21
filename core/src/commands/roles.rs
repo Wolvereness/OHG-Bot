@@ -50,9 +50,10 @@ async fn join(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let (typing, db) = join!(typing, db);
     let (_, db): (_, &Database) = (
         typing?,
-        db
+        &db
             .get::<DatabaseHandle>()
-            .ok_or("Database not present")?,
+            .ok_or("Database not present")?
+            .base,
     );
 
     if args.is_empty() {
@@ -100,9 +101,10 @@ async fn leave(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let (typing, db) = join!(typing, db);
     let (_, db): (_, &Database) = (
         typing?,
-        db
+        &db
             .get::<DatabaseHandle>()
-            .ok_or("Database not present")?,
+            .ok_or("Database not present")?
+            .base,
     );
 
     if args.is_empty() {
@@ -187,9 +189,10 @@ async fn dump_associations(ctx: &Context, msg: &Message) -> CommandResult {
     let (typing, db) = join!(typing, db);
     let (_, db): (_, &Database) = (
         typing?,
-        db
+        &db
             .get::<DatabaseHandle>()
-            .ok_or("Database not present")?,
+            .ok_or("Database not present")?
+            .base,
     );
     let associations = get_role_associations(db,msg.channel_id, guild).await?;
 
@@ -329,9 +332,10 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
         {
             let db = ctx.data.read().await;
             let associations = get_role_associations(
-                db
+                &db
                     .get::<DatabaseHandle>()
-                    .ok_or("Database not present")?,
+                    .ok_or("Database not present")?
+                    .base,
                 channel,
                 guild,
             ).await?;
@@ -358,9 +362,10 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
     type PossibleParse<T> = Result<Option<T>, ()>;
     let (db, channel, role): (_, PossibleParse<ChannelId>, PossibleParse<RoleId>) = join!(db, channel, role);
     let (db, associations): (_, Vec<RoleAssociation>) = db?;
-    let db: &Database = db
+    let db: &Database = &db
         .get::<DatabaseHandle>()
-        .ok_or("Database not present")?;
+        .ok_or("Database not present")?
+        .base;
     let (channel, role) = match (channel, role) {
         (_, Ok(None)) => return bad_message(ctx, msg).await,
         (Ok(channel), Ok(Some(role))) => (channel, role),

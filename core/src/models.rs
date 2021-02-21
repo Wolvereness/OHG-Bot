@@ -10,9 +10,6 @@ use wither::bson::oid::ObjectId;
 use serenity::prelude::*;
 
 pub use shim::Required as Shim;
-use ohg_bot_headers::CharacterState;
-use std::collections::HashSet;
-use crate::util::RPGStateHolder;
 
 #[derive(Model, Deserialize, Serialize)]
 pub struct DiscordCredentials {
@@ -31,12 +28,14 @@ impl TypeMapKey for DiscordCredentials {
     type Value = DiscordCredentials;
 }
 
+#[cfg(feature = "rpg")]
 impl TypeMapKey for RPGChannel {
-    type Value = HashSet<ChannelId>;
+    type Value = std::collections::HashSet<ChannelId>;
 }
 
+#[cfg(feature = "rpg")]
 impl TypeMapKey for RPGState {
-    type Value = Mutex<RPGStateHolder>;
+    type Value = Mutex<crate::util::RPGStateHolder>;
 }
 
 #[derive(Model, Deserialize, Serialize, Debug)]
@@ -93,6 +92,7 @@ pub struct System {
 }
 
 #[derive(Model, Deserialize, Serialize, Debug)]
+#[cfg(feature = "rpg")]
 pub struct RPGChannel {
     #[serde(rename="_id", skip_serializing_if="Option::is_none")]
     pub id: Option<ObjectId>,
@@ -101,10 +101,11 @@ pub struct RPGChannel {
 }
 
 #[derive(Model, Deserialize, Serialize, Debug)]
+#[cfg(feature = "rpg")]
 pub struct RPGState {
     #[serde(rename="_id", skip_serializing_if="Option::is_none")]
     pub id: Option<ObjectId>,
-    pub state: Box<dyn CharacterState>,
+    pub state: Box<dyn ohg_bot_headers::CharacterState>,
     pub active: bool,
     #[serde(with = "shim::Required")]
     #[model(index(index="dsc", with(field("iteration", index="dsc"))))]

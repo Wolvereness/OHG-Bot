@@ -12,7 +12,7 @@ use wither::{
 use futures::StreamExt;
 
 pub async fn main() {
-    let db = connect_db().await;
+    let db = connect_db().await.base;
     dump(
         RoleAssociation::find(&db, None, None)
             .await

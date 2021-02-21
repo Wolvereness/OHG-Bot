@@ -80,7 +80,7 @@ async fn rpg_channel(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let mut data = ctx.data.write().await;
     let channels = data.get_mut::<RPGChannel>().ok_or("No rpg channels?")?;
     if channels.insert(channel.id) {
-        let db = data.get::<DatabaseHandle>().ok_or("No database?")?;
+        let db = &data.get::<DatabaseHandle>().ok_or("No database?")?.base;
         RPGChannel {
             id: None,
             channel: channel.id,
@@ -148,7 +148,7 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         ).await?;
         return Ok(())
     }
-    let db: &Database = data_lock.get::<DatabaseHandle>().ok_or("Database not present")?;
+    let db: &Database = &data_lock.get::<DatabaseHandle>().ok_or("Database not present")?.rpg;
 
     let initial = ohg_bot_rpg::initial(defined_name);
     let rpg_states = data_lock.get::<RPGState>().ok_or("No RPG states?")?;
@@ -245,7 +245,7 @@ pub async fn reaction_add(ctx: &Context, reaction: Reaction) -> CommandResult {
         return Ok(());
     }
 
-    let db = data_lock.get::<DatabaseHandle>().ok_or("No Database")?;
+    let db = &data_lock.get::<DatabaseHandle>().ok_or("No Database")?.rpg;
     let states_mutex = data_lock.get::<RPGState>().ok_or("No States")?;
     let state =
         if let Some(state) =

@@ -6,7 +6,7 @@ edition = "2018"
 
 [features]
 default = ["rpg"]
-rpg = ["ohg-bot-rpg"]
+rpg = ["ohg-bot-headers", "ohg-bot-rpg", "cache_2q"]
 
 [dependencies.serenity]
 version = "*"
@@ -21,6 +21,6 @@ serde = "*"
 serde_derive = "*"
 futures = "*"
 byteorder = "*"
-ohg-bot-headers = { path = "../headers" }
+ohg-bot-headers = { path = "../headers", optional = true }
 ohg-bot-rpg = { path = "../rpg", optional = true }
-cache_2q = "*"
+cache_2q = { version = "*", optional = true }

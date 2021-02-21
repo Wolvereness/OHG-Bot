@@ -3,7 +3,7 @@ use wither::Model;
 use serenity::model::prelude::*;
 
 pub async fn main() {
-    let db = connect_db().await;
+    let db = connect_db().await.base;
 
     if models::DiscordCredentials::find_one(&db, None, None)
         .await
