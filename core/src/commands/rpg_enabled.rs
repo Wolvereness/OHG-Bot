@@ -114,7 +114,10 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             !c.is_alphanumeric()
             && !ADDITIONAL_ALLOWED_CHARS.contains(&c)
         )
-        || !defined_name.contains(char::is_alphanumeric)
+        || (
+            !defined_name.is_empty()
+            && !defined_name.contains(char::is_alphanumeric)
+        )
     {
         msg.channel_id.send_message(ctx, |message| message
             .reference_message(msg)
