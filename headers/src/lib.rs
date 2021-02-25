@@ -3,10 +3,22 @@
 use std::fmt::Debug;
 
 use arrayvec::ArrayVec;
-use wither::mongodb::Database;
+use wither::{
+    Model,
+    bson::oid::ObjectId,
+    mongodb::Database,
+};
 use async_trait::async_trait;
 use typetag;
+use serde::{
+    Serialize,
+    Deserialize,
+};
 pub use serenity::builder::CreateEmbed;
+pub use once_cell::sync::OnceCell;
+
+mod lazy_db;
+pub use lazy_db::LazyDB;
 
 type State = Box<dyn CharacterState>;
 
@@ -15,6 +27,13 @@ pub enum Action {
     NoChange(State),
     Changed(State),
     BadReact(State),
+}
+
+#[derive(Model, Deserialize, Serialize, Debug)]
+pub struct StatePointer {
+    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub contents: Box<dyn CharacterState>,
 }
 
 #[derive(Copy, Clone, Debug)]

@@ -14,3 +14,6 @@ wither = "0.9.0-alpha.2"
 typetag = "*"
 async-trait = "*"
 arrayvec = "*"
+once_cell = { version = "*", default-features = false, features = ["std"] }
+serde = "*"
+serde_derive = "*"

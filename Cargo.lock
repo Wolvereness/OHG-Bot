@@ -1101,6 +1101,9 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "async-trait",
+ "once_cell",
+ "serde",
+ "serde_derive",
  "serenity",
  "typetag",
  "wither",
