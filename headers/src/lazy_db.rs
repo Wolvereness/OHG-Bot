@@ -24,6 +24,16 @@ pub struct LazyDB<T> {
 }
 
 impl<T: Model + Send + Sync> LazyDB<T> {
+    pub async fn make(value: T, db: &Database) -> Result<Self, Error> {
+        let mut value = match Self::try_from(value) {
+            Ok(value) => return Ok(value),
+            Err(value) => value,
+        };
+        value.save(db, None).await?;
+        Self::try_from(value)
+            .map_err(|_| "Id not saved".into())
+    }
+
     pub fn take<'d>(
         self,
         db: &'d Database,
@@ -120,6 +130,21 @@ impl<T: Model + Send + Sync> LazyDB<T> {
                 }
             })
         }
+    }
+
+    #[inline(always)]
+    pub fn inner(self) -> Option<T> {
+        self.contents.into_inner()
+    }
+
+    #[inline(always)]
+    pub fn inner_ref(&self) -> Option<&T> {
+        self.contents.get()
+    }
+
+    #[inline(always)]
+    pub fn inner_mut(&mut self) -> Option<&mut T> {
+        self.contents.get_mut()
     }
 }
 
