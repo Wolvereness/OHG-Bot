@@ -132,6 +132,18 @@ impl<T: Model + Send + Sync> LazyDB<T> {
         }
     }
 
+    pub async fn save_inner(&mut self, db: &Database) -> Result<(), Error> {
+        let id = ObjectId::new();
+        self.id = id.clone();
+        let inner = match self.get_mut(db) {
+            Ok(inner) => inner,
+            Err(future) => future.await?,
+        };
+        inner.set_id(id);
+        inner.save(db, None).await?;
+        Ok(())
+    }
+
     #[inline(always)]
     pub fn inner(self) -> Option<T> {
         self.contents.into_inner()
