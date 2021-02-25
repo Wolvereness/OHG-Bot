@@ -143,7 +143,9 @@ impl<T: Model + Send + Sync> LazyDB<T> {
         inner.save(db, None).await?;
         Ok(())
     }
+}
 
+impl<T> LazyDB<T> {
     #[inline(always)]
     pub fn inner(self) -> Option<T> {
         self.contents.into_inner()
