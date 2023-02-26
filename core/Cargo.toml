@@ -1,26 +1,15 @@
 [package]
 name = "ohg-bot-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Wolvereness <wesley.d.wolfe+git@gmail.com>"]
-edition = "2018"
-
-[features]
-default = ["rpg"]
-rpg = ["ohg-bot-headers", "ohg-bot-rpg", "cache_2q"]
-
-[dependencies.serenity]
-version = "*"
-git = "git://github.com/serenity-rs/serenity"
-rev = "e5218498c1d2c026084d7f7efd6788571bc6170e"
+edition = "2021"
 
 [dependencies]
-tokio = { version = "*", features = [ "macros" ] }
-wither = "0.9.0-alpha.2"
-wither_derive = "0.9.0-alpha.2"
-serde = "*"
-serde_derive = "*"
-futures = "*"
-byteorder = "*"
-ohg-bot-headers = { path = "../headers", optional = true }
-ohg-bot-rpg = { path = "../rpg", optional = true }
-cache_2q = { version = "*", optional = true }
+serenity = { version = "0.11.5", features = ["unstable_discord_api"] }
+tokio = { version = "1.21.2", features = ["full"] }
+wither = "0.9.0"
+wither_derive = "0.9.0"
+serde = "1.0.147"
+serde_derive = "1.0.147"
+futures = "0.3.25"
+byteorder = "1.4.3"

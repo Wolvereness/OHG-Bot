@@ -3,7 +3,6 @@ use std::{
 };
 
 use serenity::{
-    async_trait,
     prelude::*,
     model::prelude::*,
     framework::standard::{
@@ -19,31 +18,12 @@ use serenity::{
 mod roles;
 pub use roles::ROLES_GROUP;
 
-#[cfg(feature = "rpg")]
-#[path = "commands/rpg_enabled.rs"]
-mod rpg;
-#[cfg(not(feature = "rpg"))]
-#[path = "commands/rpg_disabled.rs"]
-mod rpg;
-
-pub use rpg::RPG_GROUP;
+mod threads;
+pub use threads::THREADS_GROUP;
 
 #[group]
 #[commands(ping, parrot)]
 pub struct General;
-
-pub struct Handler;
-
-#[async_trait]
-impl EventHandler for Handler {
-    #[cfg(feature = "rpg")]
-    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
-        crate::print_errors_impl(
-            "RPG_Reaction_Add",
-            rpg::reaction_add(&ctx, reaction).await,
-        )
-    }
-}
 
 #[command]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {

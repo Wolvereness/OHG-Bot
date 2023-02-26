@@ -1,3 +1,4 @@
 /target
 /.idea
 /db-url.txt
+Cargo.lock

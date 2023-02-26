@@ -28,16 +28,6 @@ impl TypeMapKey for DiscordCredentials {
     type Value = DiscordCredentials;
 }
 
-#[cfg(feature = "rpg")]
-impl TypeMapKey for RPGChannel {
-    type Value = std::collections::HashSet<ChannelId>;
-}
-
-#[cfg(feature = "rpg")]
-impl TypeMapKey for RPGState {
-    type Value = Mutex<crate::util::RPGStateHolder>;
-}
-
 #[derive(Model, Deserialize, Serialize, Debug)]
 pub struct RoleAssociation {
     #[serde(rename="_id", skip_serializing_if="Option::is_none")]
@@ -89,30 +79,4 @@ pub struct System {
     pub boot: Runners,
     pub shutdown: Runners,
     pub sub_system: SubSystem,
-}
-
-#[derive(Model, Deserialize, Serialize, Debug)]
-#[cfg(feature = "rpg")]
-pub struct RPGChannel {
-    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
-    pub id: Option<ObjectId>,
-    #[serde(with = "shim::Required")]
-    pub channel: ChannelId,
-}
-
-#[derive(Model, Deserialize, Serialize, Debug)]
-#[cfg(feature = "rpg")]
-pub struct RPGState {
-    #[serde(rename="_id", skip_serializing_if="Option::is_none")]
-    pub id: Option<ObjectId>,
-    pub state: Box<dyn ohg_bot_headers::CharacterState>,
-    pub active: bool,
-    #[serde(with = "shim::Required")]
-    #[model(index(index="dsc", with(field("iteration", index="dsc"))))]
-    pub message: MessageId,
-    #[serde(with = "shim::Required")]
-    pub owner: UserId,
-    pub iteration: i32,
-    #[serde(default, skip_serializing_if="Option::is_none")]
-    pub previous: Option<ObjectId>,
 }

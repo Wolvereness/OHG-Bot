@@ -90,9 +90,3 @@ impl<T: Display> Display for OptionalDisplay<T> {
         }
     }
 }
-
-#[cfg(feature = "rpg")]
-pub struct RPGStateHolder {
-    pub cache: cache_2q::Cache<MessageId, Option<crate::models::RPGState>>,
-    pub lockout: std::collections::HashSet<MessageId>,
-}

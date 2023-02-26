@@ -303,7 +303,6 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
         msg.reply(ctx, ":unamused:").await?;
         return Ok(());
     }
-
     let mut channel: Option<ChannelId> = None;
     let mut role: Option<RoleId> = None;
     while !args.is_empty() {
@@ -324,43 +323,40 @@ async fn register_role(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
         return bad_message(ctx, msg).await;
     }
 
-    let db = async {
-        // This is split into a function for ? usage
-        // But, even more-so, it's a two-await that can be done concurrently to the single-awaits
-        async fn get_db_and_associations(ctx: &Context, guild: GuildId, channel: ChannelId)
-            -> CommandResult<(RwLockReadGuard<'_, TypeMap>, Vec<RoleAssociation>)>
-        {
-            let db = ctx.data.read().await;
-            let associations = get_role_associations(
-                &db
-                    .get::<DatabaseHandle>()
-                    .ok_or("Database not present")?
-                    .base,
-                channel,
-                guild,
-            ).await?;
-            Ok((db, associations))
-        }
-        get_db_and_associations(ctx, guild, channel.unwrap_or(ChannelId(!0))).await
-    };
-    let channel = async {
+    // This is split into a function for ? usage
+    // But, even more-so, it's a two-await that can be done concurrently to the single-awaits
+    async fn get_db_and_associations(ctx: &Context, guild: GuildId, channel: ChannelId)
+        -> CommandResult<(RwLockReadGuard<'_, TypeMap>, Vec<RoleAssociation>)>
+    {
+        let db = ctx.data.read().await;
+        let associations = get_role_associations(
+            &db
+                .get::<DatabaseHandle>()
+                .ok_or("Database not present")?
+                .base,
+            channel,
+            guild,
+        ).await?;
+        Ok((db, associations))
+    }
+    let db = get_db_and_associations(ctx, guild, channel.unwrap_or(ChannelId(!0))).await;
+
+    let channel = {
         if let Some(channel) = channel {
-            if let Some(channel) = ctx.cache.guild_channel(channel).await {
+            if let Some(channel) = ctx.cache.guild_channel(channel) {
                 if channel.guild_id == guild {
                     Ok(Some(channel.id))
                 } else { Err(()) }
             } else { Err(()) }
         } else { Ok(None) }
     };
-    let role = async {
+    let role = {
         if let Some(role) = role {
-            if let Some(role) = ctx.cache.role(guild, role).await {
+            if let Some(role) = ctx.cache.role(guild, role) {
                 Ok(Some(role.id))
             } else { Err(()) }
         } else { Ok(None) }
     };
-    type PossibleParse<T> = Result<Option<T>, ()>;
-    let (db, channel, role): (_, PossibleParse<ChannelId>, PossibleParse<RoleId>) = join!(db, channel, role);
     let (db, associations): (_, Vec<RoleAssociation>) = db?;
     let db: &Database = &db
         .get::<DatabaseHandle>()
