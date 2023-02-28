@@ -1,4 +1,4 @@
-
+use std::fmt;
 use serenity::{
     prelude::*,
     model::prelude::*,
@@ -34,7 +34,7 @@ async fn make_thread(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     }
     let name = args.advance().current().map(str::to_string).ok_or("No title")?;
     let rest = args.advance().rest().to_string();
-    channel.create_private_thread(ctx.http(), |thread| {
+    let thread = channel.create_private_thread(ctx.http(), |thread| {
         thread
             .name(name)
             .kind(ChannelType::PublicThread);
@@ -43,6 +43,14 @@ async fn make_thread(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         }});
         thread
     }).await?;
+
+    struct ThreadReply(ChannelId);
+    impl fmt::Display for ThreadReply {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_fmt(format_args!("Created: {}", self.0))
+        }
+    }
+    msg.reply(ctx.http(), ThreadReply(thread.id)).await?;
 
     Ok(())
 }
