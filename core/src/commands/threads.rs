@@ -44,13 +44,13 @@ async fn make_thread(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
         thread
     }).await?;
 
-    struct ThreadReply(ChannelId);
+    struct ThreadReply(Mention);
     impl fmt::Display for ThreadReply {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.write_fmt(format_args!("Created: {}", self.0))
         }
     }
-    msg.reply(ctx.http(), ThreadReply(thread.id)).await?;
+    msg.reply(ctx.http(), ThreadReply(thread.id.mention())).await?;
 
     Ok(())
 }
